@@ -29,7 +29,7 @@ project/metals.sbt
 .idea/
 
 # Local configuration files
-*/src/main/resources/application.conf
+src/main/resources/application.conf
 
 # Mac
 .DS_Store

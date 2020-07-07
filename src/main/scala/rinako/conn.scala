@@ -2,21 +2,36 @@ package net.caromo
 
 import ackcord._
 import ackcord.data._
+
+import com.typesafe.config._
+import akka.actor.{ActorSystem, Props}
+
+import scala.util.{Failure, Success}
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.concurrent.duration._
 
 object Rinako extends App {
 
-  val token = "<token>"
+  // Read config
+  val config = ConfigFactory.load()
+  val rinakoConf = config.getConfig("rinako")
 
-  val clientSettings = ClientSettings(token)
-  import clientSettings.executionContext
+  val fCli = setupClient(rinakoConf)
 
-  val client = Await.result(clientSettings.createClient(), Duration.Inf)
-
-  client.onEventSideEffectsIgnore {
-    case APIMessage.Ready(_) => println("Now ready")
+  fCli onComplete {
+    case Success(cli) =>
+      cli.onEventSideEffectsIgnore {
+        case APIMessage.Ready(_) => println("Now ready")
+      }
+      cli.login
+    case Failure(e) => 
+      e.printStackTrace()
   }
-
-  client.login
+  
+  def setupClient(config: Config): Future[DiscordClient] = {
+    val token = config.getString("token")
+    val clientSettings = ClientSettings(token)
+    clientSettings.createClient
+  }
 }
