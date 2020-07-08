@@ -5,6 +5,7 @@ ThisBuild / version := "0.1.0"
 ThisBuild / organization := "net.caromo"
 
 resolvers += Resolver.JCenterRepository
+
 lazy val root = (project in file("."))
   .settings(
     name := "rinako",
