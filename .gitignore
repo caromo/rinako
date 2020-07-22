@@ -1,35 +1,19 @@
-*.class
-*.log
 
-# sbt specific
-.cache/
-.history/
-.lib/
-dist/*
-target/
-lib_managed/
-src_managed/
-project/boot/
-project/plugins/project/
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
 
-# Scala-IDE specific
-.scala_dependencies
-.worksheet
-.ensime
-.ensime_cache
-.bloop
-.metals
-project/metals.sbt
+# Test binary, built with `go test -c`
+*.test
 
-# Sublime
-*.sublime-project
-*.sublime-workspace
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
 
-# Intellij IDEA
-.idea/
-
-# Local configuration files
-src/main/resources/application.conf
+# Dependency directories (remove the comment below to include it)
+vendor/
 
 # Mac
 .DS_Store
