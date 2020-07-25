@@ -1,0 +1,6 @@
+#+TITLE: Tasks for Rinako
+
+* TODO: role route
+  ** Add a list of allowed roles to add (so that people can't just say >role add Admin lol)
+    *** Possibly add management of this, storing state using db.
+
