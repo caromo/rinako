@@ -4,8 +4,9 @@ A Discord bot written in Golang.
 
 ## Setup
 
-1. `make`
-2. `make run`
+1. Make your `config.toml` based on the default `reference_config.toml` file.
+2. `make`
+3. `make run`
 
 ## Q&A
 
