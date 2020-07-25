@@ -12,6 +12,9 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
+# remember to not post your bot's token on the repository lmao
+config.toml
+
 *.log.txt
 
 # Dependency directories (remove the comment below to include it)
