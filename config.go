@@ -7,8 +7,9 @@ import (
 
 // Config provides config options
 type Config struct {
-	AuthToken     string `toml:"auth_token"`
-	Discriminator string `toml:"discriminator"`
+	AuthToken     string   `toml:"auth_token"`
+	Discriminator string   `toml:"discriminator"`
+	AllowedRoles  []string `toml:"allowed_roles"`
 }
 
 // ReadConfig parses a configuration from the given file.

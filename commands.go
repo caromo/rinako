@@ -61,7 +61,11 @@ func (m *messageEvent) role(args []string) {
 	opt, role := removeHead(args)
 	fmt.Printf("args: %v\n", args)
 	toModify := toCleanRole(strings.Join(role, " "))
-
+	_, exists := find(allowedRoles, toModify)
+	if !exists {
+		m.sendMessagef("Role %s is not interactable.", toModify)
+		return
+	}
 	switch opt {
 	case "add":
 		toModifyRole, err := m.getRole(toModify)

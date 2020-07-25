@@ -19,3 +19,13 @@ func toCleanRole(role string) string {
 	role = strings.TrimSuffix(role, "\"")
 	return role
 }
+
+func find(slice []string, val string) (res int, exists bool) {
+	res = -1
+	for i, v := range slice {
+		if val == v {
+			return i, true
+		}
+	}
+	return
+}
