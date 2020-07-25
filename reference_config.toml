@@ -1,0 +1,8 @@
+# Rinako reference config
+# Please make a copy of this file called config.toml with your desired settings.
+
+# Auth token: get this from discord developer portal, Create an app, make a bot for it, then get its token
+auth_token = "some_auth_token"
+
+# Discriminator: what determines the bot commands. Defaults to `>`
+discriminator = ">"

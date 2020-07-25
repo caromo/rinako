@@ -15,7 +15,11 @@
 # remember to not post your bot's token on the repository lmao
 config.toml
 
+# log files
 *.log.txt
+
+# binary output
+bin/
 
 # Dependency directories (remove the comment below to include it)
 vendor/
