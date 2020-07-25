@@ -56,6 +56,7 @@ func (m *messageEvent) processCommand(command string, args []string) (err error)
 }
 
 // TODO: Clean up this code because it's pretty hacky and repetitive right now.
+// TODO: Add a set of "allowed" roles to restrict which roles can be added.
 func (m *messageEvent) role(args []string) {
 	opt, role := removeHead(args)
 	fmt.Printf("args: %v\n", args)
