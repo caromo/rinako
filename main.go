@@ -13,7 +13,8 @@ import (
 )
 
 var discriminator string
-var allowedRoles []string
+var allowedRoles []RoleDesc
+var allowedRoleTitles []string
 
 func main() {
 	var configFile, logFile string
@@ -40,6 +41,10 @@ func main() {
 
 	discriminator = config.Discriminator
 	allowedRoles = config.AllowedRoles
+	for _, rd := range allowedRoles {
+		allowedRoleTitles = append(allowedRoleTitles, rd.Role)
+	}
+
 	dg, err := discordgo.New("Bot " + config.AuthToken)
 
 	// Register the messageCreate func as a callback for MessageCreate events.

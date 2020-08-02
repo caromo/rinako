@@ -7,9 +7,15 @@ import (
 
 // Config provides config options
 type Config struct {
-	AuthToken     string   `toml:"auth_token"`
-	Discriminator string   `toml:"discriminator"`
-	AllowedRoles  []string `toml:"allowed_roles"`
+	AuthToken     string     `toml:"auth_token"`
+	Discriminator string     `toml:"discriminator"`
+	AllowedRoles  []RoleDesc `toml:"allowed_roles"`
+}
+
+// RoleDesc is a role tag and description
+type RoleDesc struct {
+	Role string `toml: "role"`
+	Desc string `toml: "desc"`
 }
 
 // ReadConfig parses a configuration from the given file.
