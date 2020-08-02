@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -48,6 +49,12 @@ func (m *messageEvent) processCommand(command string, args []string) (err error)
 		m.test()
 	case "role":
 		m.role(args)
+		// botM, _ := m.sendMessage("Role cannot be added here. Please go to <#739258927044100157>")
+		// timer := time.NewTimer(5 * time.Second)
+		// go func() {
+		// 	<-timer.C
+		// 	m.cleanup(botM)
+		// }()
 	default:
 
 	}
@@ -55,15 +62,20 @@ func (m *messageEvent) processCommand(command string, args []string) (err error)
 	return
 }
 
-// TODO: Clean up this code because it's pretty hacky and repetitive right now.
-// TODO: Add a set of "allowed" roles to restrict which roles can be added.
+// TODO: Clean up this code because it's pretty hacky right now.
 func (m *messageEvent) role(args []string) {
+	var botM *discordgo.Message
 	opt, role := removeHead(args)
 	fmt.Printf("args: %v\n", args)
 	toModify := toCleanRole(strings.Join(role, " "))
 	_, exists := find(allowedRoles, toModify)
 	if !exists {
-		m.sendMessagef("Role %s is not interactable.", toModify)
+		botM, _ = m.sendMessagef("Role %s does not exist or is off-limits.", toModify)
+		go func() {
+			timer1 := time.NewTimer(10 * time.Second)
+			<-timer1.C
+			m.cleanup(botM)
+		}()
 		return
 	}
 	switch opt {
@@ -75,14 +87,18 @@ func (m *messageEvent) role(args []string) {
 
 		err = m.session.GuildMemberRoleAdd(m.message.GuildID, m.member.User.ID, toModifyRole.ID)
 		if err != nil {
-			log.Printf("Error adding role %s on User %s", toModifyRole.Name, m.member.User.Username)
+			log.Printf("Error adding role %s on User %s: %s", toModifyRole.Name, m.member.User.Username, err)
 
-			m.sendMessagef("Failed to add role %s", toModifyRole.Name)
+			botM, _ = m.sendMessagef("Failed to add role %s", toModifyRole.Name)
+		} else {
+			botM, _ = m.sendMessagef("Added role %s", toModifyRole.Name)
 		}
 
-		m.sendMessagef("Added role %s", toModifyRole.Name)
-
 	case "remove":
+		if !exists {
+			botM, _ = m.sendMessagef("Role %s is not interactable.", toModify)
+			break
+		}
 		toModifyRole, err := m.getRole(toModify)
 		if err != nil {
 			log.Printf("Error getting role matching %s", toModify)
@@ -91,22 +107,35 @@ func (m *messageEvent) role(args []string) {
 		err = m.session.GuildMemberRoleRemove(m.message.GuildID, m.member.User.ID, toModifyRole.ID)
 		if err != nil {
 			log.Printf("Error adding role %s on User %s", toModifyRole.Name, m.member.User.Username)
-			m.sendMessagef("Failed to remove role %s", toModifyRole.Name)
+			botM, _ = m.sendMessagef("Failed to remove role %s", toModifyRole.Name)
+		} else {
+			botM, _ = m.sendMessagef("Removed role %s", toModifyRole.Name)
 		}
 
-		m.sendMessagef("Removed role %s", toModifyRole.Name)
-
 	default:
-		m.sendMessagef("'role' command usage: `role [add/remove] \"role\"`")
+		botM, _ = m.sendMessage("'role' command usage: `role [add/remove] \"role\"`")
 	}
+	timer1 := time.NewTimer(10 * time.Second)
+	go func() {
+		<-timer1.C
+		m.cleanup(botM)
+	}()
 }
 
-func (m *messageEvent) sendMessage(text string) {
-	m.session.ChannelMessageSend(m.message.ChannelID, text)
+func (m *messageEvent) cleanup(botMessage *discordgo.Message) (err error) {
+	err = m.session.ChannelMessageDelete(m.message.ChannelID, m.message.ID)
+	err = m.session.ChannelMessageDelete(m.message.ChannelID, botMessage.ID)
+	return
 }
 
-func (m *messageEvent) sendMessagef(format string, a ...interface{}) {
-	m.session.ChannelMessageSend(m.message.ChannelID, fmt.Sprintf(format, a))
+func (m *messageEvent) sendMessage(text string) (res *discordgo.Message, err error) {
+	res, err = m.session.ChannelMessageSend(m.message.ChannelID, text)
+	return
+}
+
+func (m *messageEvent) sendMessagef(format string, a ...interface{}) (res *discordgo.Message, err error) {
+	res, err = m.session.ChannelMessageSend(m.message.ChannelID, fmt.Sprintf(format, a))
+	return
 }
 func (m *messageEvent) getRole(role string) (res *discordgo.Role, err error) {
 	var guild *discordgo.Guild
@@ -123,6 +152,7 @@ func (m *messageEvent) getRole(role string) (res *discordgo.Role, err error) {
 	}
 	if res == nil {
 		err = errors.Errorf("Role not found: %s", role)
+		log.Printf("Role not found: %s", err)
 	}
 	return
 }

@@ -43,6 +43,7 @@ func main() {
 	dg, err := discordgo.New("Bot " + config.AuthToken)
 
 	// Register the messageCreate func as a callback for MessageCreate events.
+	// dg.AddHandler(roleMessageCreate)
 	dg.AddHandler(messageCreate)
 
 	// In this example, we only care about receiving message events.
