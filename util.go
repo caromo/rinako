@@ -29,3 +29,13 @@ func find(slice []string, val string) (res int, exists bool) {
 	}
 	return
 }
+
+func findCaseInsensitive(slice []string, val string) (res int, exists bool) {
+	res = -1
+	for i, v := range slice {
+		if strings.ToLower(val) == strings.ToLower(v) {
+			return i, true
+		}
+	}
+	return
+}

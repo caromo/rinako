@@ -15,6 +15,8 @@ import (
 var discriminator string
 var allowedRoles []RoleDesc
 var allowedRoleTitles []string
+var roleCh string
+var rinako Rinako
 
 func main() {
 	var configFile, logFile string
@@ -39,23 +41,26 @@ func main() {
 		os.Exit(1)
 	}
 
-	discriminator = config.Discriminator
-	allowedRoles = config.AllowedRoles
+	rinako.config = config
+
+	discriminator = rinako.config.Discriminator
+	roleCh = rinako.config.RoleChannel
+	allowedRoles = rinako.config.AllowedRoles
 	for _, rd := range allowedRoles {
 		allowedRoleTitles = append(allowedRoleTitles, rd.Role)
 	}
 
-	dg, err := discordgo.New("Bot " + config.AuthToken)
+	rinako.session, err = discordgo.New("Bot " + rinako.config.AuthToken)
 
 	// Register the messageCreate func as a callback for MessageCreate events.
 	// dg.AddHandler(roleMessageCreate)
-	dg.AddHandler(messageCreate)
+	rinako.session.AddHandler(messageCreate)
 
 	// In this example, we only care about receiving message events.
-	dg.Identify.Intents = discordgo.MakeIntent(discordgo.IntentsGuildMessages)
+	rinako.session.Identify.Intents = discordgo.MakeIntent(discordgo.IntentsGuildMessages)
 
 	// Open a websocket connection to Discord and begin listening.
-	err = dg.Open()
+	err = rinako.session.Open()
 	if err != nil {
 		fmt.Println("error opening connection,", err)
 		return
@@ -68,5 +73,11 @@ func main() {
 	<-sc
 
 	// Cleanly close down the Discord session.
-	dg.Close()
+	rinako.session.Close()
+}
+
+// Rinako represents an instance of Rinako
+type Rinako struct {
+	session *discordgo.Session
+	config  *Config
 }

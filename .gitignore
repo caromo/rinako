@@ -18,8 +18,9 @@ config.toml
 # log files
 *.log.txt
 
-# binary output
+# binary output and fixtures
 bin/
+fixtures/
 
 # Dependency directories (remove the comment below to include it)
 vendor/

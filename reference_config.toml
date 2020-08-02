@@ -7,5 +7,13 @@ auth_token = "some_auth_token"
 # Discriminator: what determines the bot commands. Defaults to `>`
 discriminator = ">"
 
+# Role command 
+
 # Allowed roles: Which roles users are allowed to set. Please choose this carefully.
-allowed_roles = ["notAnAdminRole", "Rina Oshi"]
+[[allowed_roles]]
+role = "Rina Oshi"
+desc = "Grants access to the #rina-chan board"
+
+[[allowed_roles]]
+role = "notAnAdminRole"
+desc = "Grants access to no role in particular"

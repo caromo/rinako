@@ -47,11 +47,10 @@ func (m *messageEvent) processCommand(command string, args []string) (err error)
 	case "test":
 		m.test()
 	case "role":
-		fmt.Printf(m.message.ChannelID)
-		if m.message.ChannelID == "739258927044100157" {
+		if m.message.ChannelID == rinako.config.RoleChannel {
 			m.role(args)
 		} else {
-			botM, _ := m.sendMessage("Role cannot be added here. Please go to <#739258927044100157>")
+			botM, _ := m.sendMessagef("Role cannot be added here. Please go to <#%s>", roleCh)
 			timer := time.NewTimer(5 * time.Second)
 			go func() {
 				<-timer.C
@@ -66,7 +65,7 @@ func (m *messageEvent) processCommand(command string, args []string) (err error)
 }
 
 func checkExists(m *messageEvent, role string) (exists bool) {
-	_, exists = find(allowedRoleTitles, role)
+	_, exists = findCaseInsensitive(allowedRoleTitles, role)
 	if !exists {
 		botM, _ := m.sendMessagef("Role %s does not exist or is off-limits.", role)
 		go func() {
@@ -124,7 +123,7 @@ func (m *messageEvent) role(args []string) {
 			botM, _ = m.sendMessagef("Removed role %s", toModifyRole.Name)
 		}
 	case "list":
-		listRoles()
+		m.listRoles()
 	default:
 		botM, _ = m.sendMessage("'role' command usage: `role [add/remove] \"role\"`")
 	}
@@ -144,7 +143,7 @@ func (m *messageEvent) getRole(role string) (res *discordgo.Role, err error) {
 	}
 	roles := guild.Roles
 	for _, r := range roles {
-		if r.Name == role {
+		if strings.ToLower(r.Name) == strings.ToLower(role) {
 			res = r
 		}
 	}
@@ -155,6 +154,29 @@ func (m *messageEvent) getRole(role string) (res *discordgo.Role, err error) {
 	return
 }
 
-func listRoles() {
+func (m *messageEvent) listRoles() {
+	embedField := constructRoleEmbeds(rinako.config.AllowedRoles)
 
+	var embed = discordgo.MessageEmbed{
+		Title:  "Available Roles",
+		Fields: embedField,
+	}
+
+	m.session.ChannelMessageSendEmbed(m.channel.ID, &embed)
+}
+
+func constructRoleEmbeds(field []RoleDesc) (embeds []*discordgo.MessageEmbedField) {
+	var value = ""
+	for i, rd := range field {
+		value = value + "**" + rd.Role + "**" + "  -  " + rd.Desc
+		if i < len(field) {
+			value = value + "\n"
+		}
+	}
+	toAdd := discordgo.MessageEmbedField{
+		Name:  "Roles",
+		Value: value,
+	}
+	embeds = append(embeds, &toAdd)
+	return
 }

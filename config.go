@@ -10,12 +10,13 @@ type Config struct {
 	AuthToken     string     `toml:"auth_token"`
 	Discriminator string     `toml:"discriminator"`
 	AllowedRoles  []RoleDesc `toml:"allowed_roles"`
+	RoleChannel   string     `toml:"role_channel"`
 }
 
 // RoleDesc is a role tag and description
 type RoleDesc struct {
-	Role string `toml: "role"`
-	Desc string `toml: "desc"`
+	Role string `toml:"role" json:"role"`
+	Desc string `toml:"desc" json:"desc"`
 }
 
 // ReadConfig parses a configuration from the given file.
