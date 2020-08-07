@@ -7,9 +7,13 @@ auth_token = "some_auth_token"
 # Discriminator: what determines the bot commands. Defaults to `>`
 discriminator = ">"
 
-# Role command 
+# Role channel determines where roles can be set. 
+role_channel = "123154120501250"
 
-# Allowed roles: Which roles users are allowed to set. Please choose this carefully.
+# Color determines the color of Rinako's embeds.
+color = "EE73B8"
+
+# Allowed roles: Which roles users are allowed to set. Please choose these carefully.
 [[allowed_roles]]
 role = "Rina Oshi"
 desc = "Grants access to the #rina-chan board"

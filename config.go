@@ -11,6 +11,7 @@ type Config struct {
 	Discriminator string     `toml:"discriminator"`
 	AllowedRoles  []RoleDesc `toml:"allowed_roles"`
 	RoleChannel   string     `toml:"role_channel"`
+	Color         string     `toml:"color"`
 }
 
 // RoleDesc is a role tag and description

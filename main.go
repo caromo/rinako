@@ -12,10 +12,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-var discriminator string
-var allowedRoles []RoleDesc
 var allowedRoleTitles []string
-var roleCh string
 var rinako Rinako
 
 func main() {
@@ -43,10 +40,7 @@ func main() {
 
 	rinako.config = config
 
-	discriminator = rinako.config.Discriminator
-	roleCh = rinako.config.RoleChannel
-	allowedRoles = rinako.config.AllowedRoles
-	for _, rd := range allowedRoles {
+	for _, rd := range rinako.config.AllowedRoles {
 		allowedRoleTitles = append(allowedRoleTitles, rd.Role)
 	}
 

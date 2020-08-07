@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -31,13 +32,16 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		log.Printf("Failed to enrich message event: %v", err)
 	}
 
-	if strings.HasPrefix(m.Content, discriminator) {
-		removeDisc := strings.Replace(m.Content, discriminator, "", 1)
+	if strings.HasPrefix(m.Content, rinako.config.Discriminator) {
+		removeDisc := strings.Replace(m.Content, rinako.config.Discriminator, "", 1)
 		command, args := removeHead(strings.Split(removeDisc, " "))
 
 		if err = mEvent.processCommand(command, args); err != nil {
 			log.Printf("Error executing %s with args %s: %s", command, args, err)
 		}
+	} else if m.ChannelID == rinako.config.RoleChannel {
+		mEvent.cleanup(nil)
+		return
 	}
 
 }
@@ -50,7 +54,7 @@ func (m *messageEvent) processCommand(command string, args []string) (err error)
 		if m.message.ChannelID == rinako.config.RoleChannel {
 			m.role(args)
 		} else {
-			botM, _ := m.sendMessagef("Role cannot be added here. Please go to <#%s>", roleCh)
+			botM, _ := m.sendMessagef("Role cannot be added here. Please go to <#%s>", rinako.config.RoleChannel)
 			timer := time.NewTimer(5 * time.Second)
 			go func() {
 				<-timer.C
@@ -58,7 +62,6 @@ func (m *messageEvent) processCommand(command string, args []string) (err error)
 			}()
 		}
 	default:
-
 	}
 
 	return
@@ -76,6 +79,10 @@ func checkExists(m *messageEvent, role string) (exists bool) {
 		return
 	}
 	return
+}
+
+func (m *messageEvent) help() {
+
 }
 
 // TODO: Clean up this code because it's pretty hacky right now.
@@ -125,7 +132,7 @@ func (m *messageEvent) role(args []string) {
 	case "list":
 		m.listRoles()
 	default:
-		botM, _ = m.sendMessage("'role' command usage: `role [add/remove] \"role\"`")
+		botM, _ = m.sendMessagef("'role' command usage: `%srole [add/remove] \"role\"`", rinako.config.Discriminator)
 	}
 	timer1 := time.NewTimer(10 * time.Second)
 	go func() {
@@ -149,20 +156,26 @@ func (m *messageEvent) getRole(role string) (res *discordgo.Role, err error) {
 	}
 	if res == nil {
 		err = errors.Errorf("Role not found: %s", role)
-		log.Printf("Role not found: %s", err)
+		log.Printf("Error getting role: %s", err)
 	}
 	return
 }
 
 func (m *messageEvent) listRoles() {
 	embedField := constructRoleEmbeds(rinako.config.AllowedRoles)
-
+	color, _ := strconv.ParseUint(rinako.config.Color, 16, 32)
 	var embed = discordgo.MessageEmbed{
 		Title:  "Available Roles",
 		Fields: embedField,
+		Color:  int(color),
 	}
 
-	m.session.ChannelMessageSendEmbed(m.channel.ID, &embed)
+	botM, _ := m.session.ChannelMessageSendEmbed(m.channel.ID, &embed)
+	timer := time.NewTimer(30 * time.Second)
+	go func() {
+		<-timer.C
+		m.cleanup(botM)
+	}()
 }
 
 func constructRoleEmbeds(field []RoleDesc) (embeds []*discordgo.MessageEmbedField) {
