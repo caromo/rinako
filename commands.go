@@ -3,11 +3,13 @@ package main
 import (
 	"fmt"
 	"log"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/caromo/rinako/collections"
 	"github.com/pkg/errors"
 )
 
@@ -48,6 +50,16 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 func (m *messageEvent) processCommand(command string, args []string) (err error) {
 	switch command {
+	case "register":
+		m.register()
+	case "authorize":
+		m.authorize(args)
+	case "deauthorize":
+		m.deauthorize(args)
+	case "promote":
+		m.promote(args)
+	case "demote":
+		m.demote(args)
 	case "test":
 		m.test()
 	case "role":
@@ -81,8 +93,128 @@ func checkExists(m *messageEvent, role string) (exists bool) {
 	return
 }
 
-func (m *messageEvent) help() {
+func (m *messageEvent) register() {
+	serv, err := rinako.GetServer(m.guild.ID)
 
+	if !serv.IsEmpty() {
+		m.sendMessage("Server is already registered.")
+	} else if err != nil {
+		fmt.Printf("Err %v\n", err)
+		m.sendMessagef("Failed to find server %s", m.guild.Name)
+	} else {
+		err := rinako.AddServer(m.guild.ID, m.guild.Name)
+		if err != nil {
+			_, _ = m.sendMessagef("Failed to add server %s", m.guild.Name)
+		} else {
+			m.sendMessage("Successfully registered server.")
+		}
+	}
+}
+
+func (m *messageEvent) authorize(args []string) {
+	if len(args) == 0 {
+		m.sendMessage("`authorize` command use: aaskdpoaksdopaksodp")
+	} else if !m.isElevatedOrOwner() {
+		return
+	} else {
+		fmt.Printf("%s\n", args)
+		role, descList, err := m.getRoleFromArgs(args)
+		if err != nil {
+			return
+		}
+		desc, err := strip(strings.Join(descList, " "))
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		roleDesc := collections.RoleDesc{
+			Role: role.Name,
+			Desc: desc,
+		}
+
+		if err = rinako.AddAllowedRole(m.guild.ID, roleDesc); err != nil {
+			m.sendMessagef("Error authorizing role %s: %s", roleDesc.Role, err)
+		} else {
+			m.sendMessagef("Successfully authorized role: %s", roleDesc.Role)
+		}
+	}
+}
+
+func (m *messageEvent) deauthorize(args []string) {
+	if len(args) == 0 {
+		m.sendMessage("`deauthorize` command use: aaskdpoaksdopaksodp")
+	} else if !m.isElevatedOrOwner() {
+		return
+	} else {
+		role, _, err := m.getRoleFromArgs(args)
+		if err != nil {
+			return
+		}
+
+		if err := rinako.RemoveAllowedRole(m.guild.ID, role.Name); err != nil {
+			m.sendMessagef("Error deauthorizing role %s: %s", role.Name, err)
+		} else {
+			m.sendMessagef("Successfully deauthorized role: %s", role.Name)
+		}
+	}
+
+}
+
+func (m *messageEvent) promote(args []string) {
+	if len(args) != 1 {
+		m.sendMessage("`promote` command use: aaskdpoaksdopaksodp")
+	} else if !m.isElevatedOrOwner() {
+		return
+	} else {
+		role, _, err := m.getRoleFromArgs(args)
+		if err != nil {
+			return
+		}
+
+		if err := rinako.PromoteRole(m.guild.ID, role.ID); err != nil {
+			m.sendMessagef("Error promoting role %s: %s", role.Name, err)
+		} else {
+			m.sendMessagef("Successfully promoted role: %s", role.Name)
+		}
+	}
+}
+
+func (m *messageEvent) demote(args []string) {
+	if len(args) != 1 {
+		m.sendMessage("`demote` command use: aaskdpoaksdopaksodp")
+	} else if !m.isElevatedOrOwner() {
+		return
+	} else {
+		role, _, err := m.getRoleFromArgs(args)
+		if err != nil {
+			return
+		}
+
+		if err := rinako.DemoteRole(m.guild.ID, role.ID); err != nil {
+			m.sendMessagef("Error demoting role %s: %s", role.Name, err)
+		} else {
+			m.sendMessagef("Successfully demoted role: %s", role.Name)
+		}
+	}
+}
+
+func (m *messageEvent) getRoleFromArgs(args []string) (role *discordgo.Role, tail []string, err error) {
+	roleid, tail := removeHead(args)
+	reg, err := regexp.Compile("[^0-9]+")
+	if err != nil {
+		log.Fatal(err)
+		err = errors.New("Failed to extract role from message")
+		m.sendMessagef("Failed to extract role from message")
+		return
+	}
+	r := reg.ReplaceAllString(roleid, "")
+
+	role, err = m.getRoleByID(r)
+	if err != nil {
+		m.sendMessagef("No such role exists: %s", args[0])
+	}
+	return role, tail, err
 }
 
 // TODO: Clean up this code because it's pretty hacky right now.
@@ -141,6 +273,26 @@ func (m *messageEvent) role(args []string) {
 	}()
 }
 
+func (m *messageEvent) getRoleByID(id string) (res *discordgo.Role, err error) {
+	var guild *discordgo.Guild
+	guild, err = m.session.Guild(m.message.GuildID)
+	if err != nil {
+		log.Printf("Error getting guild %s: %s", m.message.GuildID, err)
+		return
+	}
+	roles := guild.Roles
+	for _, r := range roles {
+		if r.ID == id {
+			res = r
+		}
+	}
+	if res == nil {
+		err = errors.Errorf("Role not found")
+		log.Printf("Error getting role: %s", err)
+	}
+	return
+}
+
 func (m *messageEvent) getRole(role string) (res *discordgo.Role, err error) {
 	var guild *discordgo.Guild
 	guild, err = m.session.Guild(m.message.GuildID)
@@ -162,7 +314,9 @@ func (m *messageEvent) getRole(role string) (res *discordgo.Role, err error) {
 }
 
 func (m *messageEvent) listRoles() {
-	embedField := constructRoleEmbeds(rinako.config.AllowedRoles)
+	roles := rinako.GetAllowedRolesForServer(m.guild.ID)
+	// embedField := constructRoleEmbeds(rinako.config.AllowedRoles)
+	embedField := constructRoleEmbeds(roles)
 	color, _ := strconv.ParseUint(rinako.config.Color, 16, 32)
 	var embed = discordgo.MessageEmbed{
 		Title:  "Available Roles",
@@ -178,7 +332,27 @@ func (m *messageEvent) listRoles() {
 	}()
 }
 
-func constructRoleEmbeds(field []RoleDesc) (embeds []*discordgo.MessageEmbedField) {
+func (m *messageEvent) isElevatedOrOwner() bool {
+	//if message sender is server owner OR belongs to specified roles, let them through
+	hasElevatedRole := false
+	server, err := rinako.GetServer(m.guild.ID)
+	if err != nil {
+		m.sendMessagef("Server is not yet registered: %sregister", rinako.config.Discriminator)
+	}
+	for _, id := range m.member.Roles {
+		_, exists := find(server.ElevatedRoles, id)
+		if exists {
+			hasElevatedRole = true
+		}
+	}
+	result := (m.member.User.ID == m.guild.OwnerID || hasElevatedRole)
+	if !result {
+		m.sendMessage("Command inaccessible: missing permissions")
+	}
+	return result
+}
+
+func constructRoleEmbeds(field []collections.RoleDesc) (embeds []*discordgo.MessageEmbedField) {
 	var value = ""
 	for i, rd := range field {
 		value = value + "**" + rd.Role + "**" + "  -  " + rd.Desc
