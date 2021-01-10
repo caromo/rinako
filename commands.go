@@ -142,11 +142,7 @@ func (m *messageEvent) authorize(args []string) {
 		if err != nil {
 			return
 		}
-		desc, err := strip(strings.Join(descList, " "))
-		if err != nil {
-			log.Fatal(err)
-			return
-		}
+		desc := strings.ReplaceAll(strings.Join(descList, " "), "\"", "")
 
 		roleDesc := collections.RoleDesc{
 			Role: role.Name,
