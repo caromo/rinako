@@ -22,7 +22,7 @@ func (s *Server) ToInfo() ServerInfo {
 	var rn []string
 	json.Unmarshal(s.AllowedRoles, &ar)
 	json.Unmarshal(s.ElevatedRoles, &er)
-	json.Unmarshal(s.ElevatedRoles, &rn)
+	json.Unmarshal(s.RouletteNames, &rn)
 
 	return ServerInfo{
 		ID:            s.ID,

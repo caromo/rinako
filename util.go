@@ -55,7 +55,7 @@ func appendUnique(slice []string, val string) []string {
 }
 
 func strip(in string) (res string, err error) {
-	reg, err := regexp.Compile("[^a-zA-Z0-9 ]+")
+	reg, err := regexp.Compile("[^a-zA-Z0-9\"]+")
 	if err != nil {
 		return "", err
 	}

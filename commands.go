@@ -45,7 +45,6 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			log.Printf("Error executing %s with args %s: %s", command, args, err)
 		}
 	}
-	fmt.Printf("Roulette name: %s\n", rinako.config.RouletteName)
 }
 
 func (m *messageEvent) processCommand(command string, args []string) (err error) {
@@ -402,6 +401,7 @@ func (m *messageEvent) tag(args []string) {
 	} else if !m.isElevatedOrOwner() {
 		return
 	}
+	fmt.Printf("tag args: %s", args)
 	memberID := args[0]
 
 	reg, err := regexp.Compile("[^0-9]+")
@@ -412,8 +412,12 @@ func (m *messageEvent) tag(args []string) {
 		return
 	}
 	memberID = reg.ReplaceAllString(memberID, "")
-	rinako.AddRoulName(m.guild.ID, memberID)
-	m.sendMessagef("Added <@!%s>", memberID)
+	fmt.Printf("memid%s\n", memberID)
+	if err = rinako.AddRoulName(m.guild.ID, memberID); err != nil {
+		m.sendMessagef("Error adding user <@%s>: %s", memberID, err)
+	} else {
+		m.sendMessagef("Added <@%s>", memberID)
+	}
 	return
 }
 
@@ -424,6 +428,7 @@ func (m *messageEvent) untag(args []string) {
 	} else if !m.isElevatedOrOwner() {
 		return
 	}
+	fmt.Printf("untag args: %s", args)
 	serv, _ := rinako.GetServer(m.guild.ID)
 	memberID := args[0]
 	reg, err := regexp.Compile("[^0-9]+")
@@ -437,16 +442,19 @@ func (m *messageEvent) untag(args []string) {
 	if _, exists := find(serv.RouletteNames, memberID); exists && memberID != rinako.config.OverrideID {
 		m.sendMessage(rinako.config.RoulettePText)
 	} else {
-		rinako.RemoveRoulName(m.guild.ID, memberID)
-		m.sendMessagef("Removed <@!%s>")
+		if err = rinako.RemoveRoulName(m.guild.ID, memberID); err != nil {
+			m.sendMessagef("Error removing user <@%s>: %s", memberID, err)
+		} else {
+			m.sendMessagef("Removed <@%s>", memberID)
+		}
 	}
 	return
 }
 
 func (m *messageEvent) roulette() {
 	serv, _ := rinako.GetServer(m.guild.ID)
-
+	fmt.Printf("roulete names:%s\n", serv.RouletteNames)
 	rand.Seed(time.Now().Unix())
-	m.sendMessagef("<@!%s> %s", serv.RouletteNames[rand.Intn(len(serv.RouletteNames))], rinako.config.RouletteRText)
+	m.sendMessagef("<@%s> %s", serv.RouletteNames[rand.Intn(len(serv.RouletteNames))], rinako.config.RouletteRText)
 
 }
