@@ -439,7 +439,7 @@ func (m *messageEvent) untag(args []string) {
 		return
 	}
 	memberID = reg.ReplaceAllString(memberID, "")
-	if _, exists := find(serv.RouletteNames, memberID); exists && memberID != rinako.config.OverrideID {
+	if _, exists := find(serv.RouletteNames, memberID); exists && m.member.User.ID != rinako.config.OverrideID {
 		m.sendMessage(rinako.config.RoulettePText)
 	} else {
 		if err = rinako.RemoveRoulName(m.guild.ID, memberID); err != nil {
