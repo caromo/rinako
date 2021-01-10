@@ -41,11 +41,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if err = mEvent.processCommand(command, args); err != nil {
 			log.Printf("Error executing %s with args %s: %s", command, args, err)
 		}
-	} else if m.ChannelID == rinako.config.RoleChannel {
-		mEvent.cleanup(nil)
-		return
 	}
-
 }
 
 func (m *messageEvent) processCommand(command string, args []string) (err error) {
@@ -62,11 +58,16 @@ func (m *messageEvent) processCommand(command string, args []string) (err error)
 		m.demote(args)
 	case "test":
 		m.test()
+	case "setCh":
+		m.setCh()
 	case "role":
-		if m.message.ChannelID == rinako.config.RoleChannel {
+		rolech := rinako.GetRoleCh(m.message.GuildID)
+		if rolech == "" {
+			m.sendMessagef("Role channel not set. use %ssetCh in desired channel to set.", rinako.config.Discriminator)
+		} else if m.message.ChannelID == rolech {
 			m.role(args)
 		} else {
-			botM, _ := m.sendMessagef("Role cannot be added here. Please go to <#%s>", rinako.config.RoleChannel)
+			botM, _ := m.sendMessagef("Role cannot be added here. Please go to <#%s>", rolech)
 			timer := time.NewTimer(5 * time.Second)
 			go func() {
 				<-timer.C
@@ -80,7 +81,13 @@ func (m *messageEvent) processCommand(command string, args []string) (err error)
 }
 
 func checkExists(m *messageEvent, role string) (exists bool) {
-	_, exists = findCaseInsensitive(allowedRoleTitles, role)
+	roleDescs := rinako.GetAllowedRolesForServer(m.guild.ID)
+	var roleNameList []string
+	for _, x := range roleDescs {
+		roleNameList = append(roleNameList, x.Role)
+	}
+	fmt.Printf("CheckExists: roleNameList: %v, role %s\n", roleNameList, role)
+	_, exists = findCaseInsensitive(roleNameList, role)
 	if !exists {
 		botM, _ := m.sendMessagef("Role %s does not exist or is off-limits.", role)
 		go func() {
@@ -107,6 +114,20 @@ func (m *messageEvent) register() {
 			_, _ = m.sendMessagef("Failed to add server %s", m.guild.Name)
 		} else {
 			m.sendMessage("Successfully registered server.")
+		}
+	}
+}
+
+func (m *messageEvent) setCh() {
+	if !m.isElevatedOrOwner() {
+		return
+	} else {
+		serv, err := rinako.GetServer(m.guild.ID)
+
+		if err = rinako.SetRoleCh(serv.ID, m.channel.ID); err != nil {
+			m.sendMessagef("Failed to set channel as Role Channel: %s", err)
+		} else {
+			m.sendMessage("Successfully set channel as Role Channel")
 		}
 	}
 }
@@ -263,14 +284,20 @@ func (m *messageEvent) role(args []string) {
 		}
 	case "list":
 		m.listRoles()
+		timer1 := time.NewTimer(60 * time.Second)
+		go func() {
+			<-timer1.C
+			m.cleanup(botM)
+		}()
 	default:
 		botM, _ = m.sendMessagef("'role' command usage: `%srole [add/remove] \"role\"`", rinako.config.Discriminator)
+		timer1 := time.NewTimer(60 * time.Second)
+		go func() {
+			<-timer1.C
+			m.cleanup(botM)
+		}()
 	}
-	timer1 := time.NewTimer(10 * time.Second)
-	go func() {
-		<-timer1.C
-		m.cleanup(botM)
-	}()
+
 }
 
 func (m *messageEvent) getRoleByID(id string) (res *discordgo.Role, err error) {

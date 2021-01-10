@@ -33,7 +33,6 @@ func (r *Rinako) GetServer(id string) (servInfo coll.ServerInfo, err error) {
 		log.Printf("error getting server: %s", err)
 		return
 	}
-	fmt.Printf("serv: %v\n", serv)
 	servInfo = serv.ToInfo()
 	return servInfo, nil
 }
@@ -178,4 +177,24 @@ func (r *Rinako) DemoteRole(server string, role string) (err error) {
 	}
 
 	return
+}
+
+func (r *Rinako) SetRoleCh(server string, ch string) (err error) {
+	serv, err := r.getServerInternal(server)
+	if ch == serv.RoleChannel {
+		return errors.New("Current channel is already set as Role Channel")
+	}
+	serv.RoleChannel = ch
+	if err = r.db.Save(&serv).Error; err != nil {
+		log.Printf("error setting rolech: %s", err)
+		return errors.Wrapf(err, "Failed to set role channel:")
+	}
+
+	return
+}
+
+func (r *Rinako) GetRoleCh(server string) string {
+	serv, _ := r.getServerInternal(server)
+
+	return serv.RoleChannel
 }
