@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -221,17 +220,10 @@ func (m *messageEvent) demote(args []string) {
 }
 
 func (m *messageEvent) getRoleFromArgs(args []string) (role *discordgo.Role, tail []string, err error) {
-	roleid, tail := removeHead(args)
-	reg, err := regexp.Compile("[^0-9]+")
-	if err != nil {
-		log.Fatal(err)
-		err = errors.New("Failed to extract role from message")
-		m.sendMessagef("Failed to extract role from message")
-		return
-	}
-	r := reg.ReplaceAllString(roleid, "")
+	strArgs := extractQuotes(strings.Join(args, " "))
+	rString, tail := removeHead(strArgs)
 
-	role, err = m.getRoleByID(r)
+	role, err = m.getRole(toCleanRole(rString))
 	if err != nil {
 		m.sendMessagef("No such role exists: %s", args[0])
 	}
@@ -242,7 +234,7 @@ func (m *messageEvent) getRoleFromArgs(args []string) (role *discordgo.Role, tai
 func (m *messageEvent) role(args []string) {
 	var botM *discordgo.Message
 	opt, role := removeHead(args)
-	fmt.Printf("args: %v\n", args)
+	fmt.Printf("user: %s\nargs: %v\n", m.member.User.Username, args)
 	toModify := toCleanRole(strings.Join(role, " "))
 
 	switch opt {

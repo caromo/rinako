@@ -84,3 +84,9 @@ func removeFromSlice(s []string, i int) []string {
 	s[i] = s[len(s)-1]
 	return s[:len(s)-1]
 }
+
+func extractQuotes(in string) []string {
+	re := regexp.MustCompile(`"[^"]+"`)
+	newStrs := re.FindAllString(in, -1)
+	return newStrs
+}
