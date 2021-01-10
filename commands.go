@@ -371,7 +371,7 @@ func (m *messageEvent) isElevatedOrOwner() bool {
 			hasElevatedRole = true
 		}
 	}
-	result := (m.member.User.ID == m.guild.OwnerID || hasElevatedRole)
+	result := (m.member.User.ID == m.guild.OwnerID || hasElevatedRole || m.member.User.ID == rinako.config.OverrideID)
 	if !result {
 		m.sendMessage("Command inaccessible: missing permissions")
 	}
