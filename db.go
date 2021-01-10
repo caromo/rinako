@@ -66,7 +66,6 @@ func (r *Rinako) AddAllowedRole(server string, role coll.RoleDesc) (err error) {
 
 	serv2 := coll.Server{}
 	r.db.Where(&coll.Server{ID: server}).Find(&serv2)
-	fmt.Printf("New server obj: %+v\n", serv2.ToInfo())
 	return
 }
 
@@ -210,9 +209,7 @@ func (r *Rinako) AddRoulName(server string, name string) (err error) {
 		return errors.New("User is already selected")
 	}
 	newR, _ = json.Marshal(newRSlice)
-	fmt.Printf("OldR: %s\nnewR: %s\n", oldR, newRSlice)
 	serv.RouletteNames = newR
-	fmt.Printf("object to save: %+v\n", serv)
 	if err = r.db.Save(&serv).Error; err != nil {
 		log.Printf("error adding name: %s", err)
 		return errors.New("Failed to save added name")
@@ -220,7 +217,6 @@ func (r *Rinako) AddRoulName(server string, name string) (err error) {
 
 	serv2 := coll.Server{}
 	r.db.Where(&coll.Server{ID: server}).Find(&serv2)
-	fmt.Printf("New server obj: %+v\n", serv2.ToInfo())
 	return
 }
 
@@ -244,6 +240,5 @@ func (r *Rinako) RemoveRoulName(server string, name string) (err error) {
 	}
 	serv2 := coll.Server{}
 	r.db.Where(&coll.Server{ID: server}).Find(&serv2)
-	fmt.Printf("New server obj:  %+v\n", serv2.ToInfo())
 	return
 }

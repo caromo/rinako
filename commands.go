@@ -95,7 +95,6 @@ func checkExists(m *messageEvent, role string) (exists bool) {
 	for _, x := range roleDescs {
 		roleNameList = append(roleNameList, x.Role)
 	}
-	fmt.Printf("CheckExists: roleNameList: %v, role %s\n", roleNameList, role)
 	_, exists = findCaseInsensitive(roleNameList, role)
 	if !exists {
 		botM, _ := m.sendMessagef("Role %s does not exist or is off-limits.", role)
@@ -147,7 +146,6 @@ func (m *messageEvent) authorize(args []string) {
 	} else if !m.isElevatedOrOwner() {
 		return
 	} else {
-		fmt.Printf("%s\n", args)
 		role, descList, err := m.getRoleFromArgs(args)
 		if err != nil {
 			return
@@ -401,7 +399,6 @@ func (m *messageEvent) tag(args []string) {
 	} else if !m.isElevatedOrOwner() {
 		return
 	}
-	fmt.Printf("tag args: %s", args)
 	memberID := args[0]
 
 	reg, err := regexp.Compile("[^0-9]+")
@@ -412,7 +409,6 @@ func (m *messageEvent) tag(args []string) {
 		return
 	}
 	memberID = reg.ReplaceAllString(memberID, "")
-	fmt.Printf("memid%s\n", memberID)
 	if err = rinako.AddRoulName(m.guild.ID, memberID); err != nil {
 		m.sendMessagef("Error adding user <@%s>: %s", memberID, err)
 	} else {
@@ -428,7 +424,6 @@ func (m *messageEvent) untag(args []string) {
 	} else if !m.isElevatedOrOwner() {
 		return
 	}
-	fmt.Printf("untag args: %s", args)
 	serv, _ := rinako.GetServer(m.guild.ID)
 	memberID := args[0]
 	reg, err := regexp.Compile("[^0-9]+")
@@ -453,7 +448,6 @@ func (m *messageEvent) untag(args []string) {
 
 func (m *messageEvent) roulette() {
 	serv, _ := rinako.GetServer(m.guild.ID)
-	fmt.Printf("roulete names:%s\n", serv.RouletteNames)
 	rand.Seed(time.Now().Unix())
 	m.sendMessagef("<@%s> %s", serv.RouletteNames[rand.Intn(len(serv.RouletteNames))], rinako.config.RouletteRText)
 
