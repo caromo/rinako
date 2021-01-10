@@ -13,13 +13,16 @@ type Server struct {
 	RoleChannel   string
 	AllowedRoles  []byte
 	ElevatedRoles []byte
+	RouletteNames []byte
 }
 
 func (s *Server) ToInfo() ServerInfo {
 	var ar []RoleDesc
 	var er []string
+	var rn []string
 	json.Unmarshal(s.AllowedRoles, &ar)
 	json.Unmarshal(s.ElevatedRoles, &er)
+	json.Unmarshal(s.ElevatedRoles, &rn)
 
 	return ServerInfo{
 		ID:            s.ID,
@@ -27,6 +30,7 @@ func (s *Server) ToInfo() ServerInfo {
 		RoleChannel:   s.RoleChannel,
 		AllowedRoles:  ar,
 		ElevatedRoles: er,
+		RouletteNames: rn,
 	}
 }
 
@@ -41,6 +45,7 @@ type ServerInfo struct {
 	RoleChannel   string
 	AllowedRoles  []RoleDesc
 	ElevatedRoles []string
+	RouletteNames []string
 }
 
 func (s ServerInfo) IsEmpty() bool {

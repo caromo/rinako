@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
+	"math/rand"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -33,6 +35,8 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		log.Printf("Failed to enrich message event: %v", err)
 	}
 
+	// if (mEvent.member.User.ID == "168273566448615425")
+
 	if strings.HasPrefix(m.Content, rinako.config.Discriminator) {
 		removeDisc := strings.Replace(m.Content, rinako.config.Discriminator, "", 1)
 		command, args := removeHead(strings.Split(removeDisc, " "))
@@ -41,6 +45,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			log.Printf("Error executing %s with args %s: %s", command, args, err)
 		}
 	}
+	fmt.Printf("Roulette name: %s\n", rinako.config.RouletteName)
 }
 
 func (m *messageEvent) processCommand(command string, args []string) (err error) {
@@ -73,6 +78,12 @@ func (m *messageEvent) processCommand(command string, args []string) (err error)
 				m.cleanup(botM)
 			}()
 		}
+	case "tag":
+		m.tag(args)
+	case "untag":
+		m.untag(args)
+	case rinako.config.RouletteName:
+		m.roulette()
 	default:
 	}
 
@@ -381,4 +392,61 @@ func constructRoleEmbeds(field []collections.RoleDesc) (embeds []*discordgo.Mess
 	}
 	embeds = append(embeds, &toAdd)
 	return
+}
+
+//People tagged under roulette can tag others
+func (m *messageEvent) tag(args []string) {
+
+	if len(args) == 0 {
+		m.sendMessagef("Use: %stag @<name>", rinako.config.Discriminator)
+	} else if !m.isElevatedOrOwner() {
+		return
+	}
+	memberID := args[0]
+
+	reg, err := regexp.Compile("[^0-9]+")
+	if err != nil {
+		log.Fatal(err)
+		err = errors.New("Failed to extract user from message")
+		m.sendMessagef("Failed to extract user from message")
+		return
+	}
+	memberID = reg.ReplaceAllString(memberID, "")
+	rinako.AddRoulName(m.guild.ID, memberID)
+	m.sendMessagef("Added <@!%s>", memberID)
+	return
+}
+
+//...but they can't remove themselves
+func (m *messageEvent) untag(args []string) {
+	if len(args) == 0 {
+		m.sendMessagef("Use: %suntagtag @<name>", rinako.config.Discriminator)
+	} else if !m.isElevatedOrOwner() {
+		return
+	}
+	serv, _ := rinako.GetServer(m.guild.ID)
+	memberID := args[0]
+	reg, err := regexp.Compile("[^0-9]+")
+	if err != nil {
+		log.Fatal(err)
+		err = errors.New("Failed to extract user from message")
+		m.sendMessagef("Failed to extract user from message")
+		return
+	}
+	memberID = reg.ReplaceAllString(memberID, "")
+	if _, exists := find(serv.RouletteNames, memberID); exists && memberID != rinako.config.OverrideID {
+		m.sendMessage(rinako.config.RoulettePText)
+	} else {
+		rinako.RemoveRoulName(m.guild.ID, memberID)
+		m.sendMessagef("Removed <@!%s>")
+	}
+	return
+}
+
+func (m *messageEvent) roulette() {
+	serv, _ := rinako.GetServer(m.guild.ID)
+
+	rand.Seed(time.Now().Unix())
+	m.sendMessagef("<@!%s> %s", serv.RouletteNames[rand.Intn(len(serv.RouletteNames))], rinako.config.RouletteRText)
+
 }

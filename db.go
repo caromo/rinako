@@ -198,3 +198,45 @@ func (r *Rinako) GetRoleCh(server string) string {
 
 	return serv.RoleChannel
 }
+
+func (r *Rinako) AddRoulName(server string, name string) (err error) {
+	serv, err := r.getServerInternal(server)
+
+	var oldR []string
+	var newR []byte
+	json.Unmarshal(serv.ElevatedRoles, &oldR)
+	newRSlice := appendUnique(oldR, name)
+	if len(newRSlice) == len(oldR) {
+		return errors.New("User is already selected")
+	}
+	newR, _ = json.Marshal(newRSlice)
+	serv.ElevatedRoles = newR
+	if err = r.db.Save(&serv).Error; err != nil {
+		log.Printf("error adding name: %s", err)
+		return errors.New("Failed to save added name")
+	}
+
+	return
+}
+
+func (r *Rinako) RemoveRoulName(server string, name string) (err error) {
+	serv, err := r.getServerInternal(server)
+
+	var oldR []string
+	var newR []byte
+	json.Unmarshal(serv.ElevatedRoles, &oldR)
+	index, exists := find(oldR, name)
+	if !exists {
+		return errors.New("User is already out")
+	}
+
+	newR, _ = json.Marshal(removeFromSlice(oldR, index))
+
+	serv.ElevatedRoles = newR
+	if err = r.db.Save(&serv).Error; err != nil {
+		log.Printf("error removing name: %s", err)
+		return errors.New("Failed to save removed name")
+	}
+
+	return
+}

@@ -15,6 +15,10 @@ type Config struct {
 	RoleChannel   string                 `toml:"role_channel"`
 	Color         string                 `toml:"color"`
 	DBPath        string                 `toml:"db_path"`
+	RouletteName  string                 `toml:"roulette_name"`
+	RoulettePText string                 `toml:"roulette_perm_text"`
+	RouletteRText string                 `toml:"roulette_result_text"`
+	OverrideID    string                 `toml:"override_id"`
 }
 
 // ReadConfig parses a configuration from the given file.
