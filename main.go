@@ -10,6 +10,8 @@ import (
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/caromo/rinako/collections"
+	"github.com/jinzhu/gorm"
 )
 
 var allowedRoleTitles []string
@@ -38,8 +40,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	rinako.config = config
+	db, err := InitializeDB(config.DBPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to open DB %s: %v", config.DBPath, err)
+		os.Exit(1)
+	}
 
+	rinako.config = config
+	rinako.db = db
+
+	db.AutoMigrate(&collections.Server{})
+	db.AutoMigrate(&collections.User{})
+
+	//keep this in for "backwards compatibility"
 	for _, rd := range rinako.config.AllowedRoles {
 		allowedRoleTitles = append(allowedRoleTitles, rd.Role)
 	}
@@ -74,4 +87,5 @@ func main() {
 type Rinako struct {
 	session *discordgo.Session
 	config  *Config
+	db      *gorm.DB
 }

@@ -21,6 +21,7 @@ config.toml
 # binary output and fixtures
 bin/
 fixtures/
+resources/
 
 # Dependency directories (remove the comment below to include it)
 vendor/

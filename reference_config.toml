@@ -13,6 +13,8 @@ role_channel = "123154120501250"
 # Color determines the color of Rinako's embeds.
 color = "EE73B8"
 
+db_path = "resources/db.sqlite3"
+
 # Allowed roles: Which roles users are allowed to set. Please choose these carefully.
 [[allowed_roles]]
 role = "Rina Oshi"

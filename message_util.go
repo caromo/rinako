@@ -21,7 +21,7 @@ func (m *messageEvent) sendMessage(text string) (res *discordgo.Message, err err
 }
 
 func (m *messageEvent) sendMessagef(format string, a ...interface{}) (res *discordgo.Message, err error) {
-	res, err = m.session.ChannelMessageSend(m.message.ChannelID, fmt.Sprintf(format, a))
+	res, err = m.session.ChannelMessageSend(m.message.ChannelID, fmt.Sprintf(format, a...))
 	return
 }
 
