@@ -468,19 +468,29 @@ func (m *messageEvent) checkApex() {
 	if err != nil {
 		m.sendMessage("Parsing no workie")
 	}
-	var f func(*html.Node)
-	f = func(n *html.Node) {
+	mapDone := false
+	timerDone := false
+	currMap := ""
+	currTimer := ""
+	var f func(*html.Node, *bool, *bool, *string, *string)
+	f = func(n *html.Node, mapDone *bool, timerDone *bool, currMap *string, currTimer *string) {
 		if n.Type == html.TextNode && strings.Contains(n.Data, "Battle Royale") {
-			playable := "Yes"
-			if n.Data == "Battle Royale: World's Edge" {
-				playable = "No"
-			}
-			m.sendMessage(playable)
-			return
+			*currMap = n.Data
+			*mapDone = true
+		}
+		if n.Type == html.TextNode && strings.Contains(n.Data, "From") {
+			*currTimer = n.Data
+			*timerDone = true
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			f(c)
+			f(c, mapDone, timerDone, currMap, currTimer)
+			if *mapDone && *timerDone {
+				break
+			}
 		}
 	}
-	f(doc)
+	f(doc, &mapDone, &timerDone, &currMap, &currTimer)
+	if currMap == "Battle Royale: World's Edge" {
+		m.sendMessage("no")
+	}
 }
