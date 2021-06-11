@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/caromo/rinako/collections"
 	"github.com/pkg/errors"
+	"golang.org/x/net/html"
 )
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
@@ -83,6 +85,8 @@ func (m *messageEvent) processCommand(command string, args []string) (err error)
 		m.untag(args)
 	case rinako.config.RouletteName:
 		m.roulette()
+	case "isapexplayable":
+		m.checkApex()
 	default:
 	}
 
@@ -451,4 +455,69 @@ func (m *messageEvent) roulette() {
 	rand.Seed(time.Now().Unix())
 	m.sendMessagef("<@%s> %s", serv.RouletteNames[rand.Intn(len(serv.RouletteNames))], rinako.config.RouletteRText)
 
+}
+
+func (m *messageEvent) checkApex() {
+	url := "https://apexlegendsstatus.com/current-map"
+	resp, err := http.Get(url)
+	if err != nil {
+		m.sendMessage("The URL link is probably busted")
+	}
+	defer resp.Body.Close()
+	doc, err := html.Parse(resp.Body)
+	if err != nil {
+		m.sendMessage("Parsing no workie")
+	}
+	mapDone := false
+	timerDone := false
+	currMap := ""
+	currTimer := ""
+	var f func(*html.Node, *bool, *bool, *string, *string)
+	f = func(n *html.Node, mapDone *bool, timerDone *bool, currMap *string, currTimer *string) {
+		if n.Type == html.TextNode && strings.Contains(n.Data, "Battle Royale") {
+			*currMap = n.Data
+			*mapDone = true
+		}
+		if n.Type == html.TextNode && strings.Contains(n.Data, "From") {
+			*currTimer = n.Data
+			*timerDone = true
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			f(c, mapDone, timerDone, currMap, currTimer)
+			if *mapDone && *timerDone {
+				break
+			}
+		}
+	}
+	f(doc, &mapDone, &timerDone, &currMap, &currTimer)
+
+	timerExp := regexp.MustCompile(`From ((0[0-9]|1[0-9]|2[0-3]):([0-5][0-9])) to ((0[0-9]|1[0-9]|2[0-3]):([0-5][0-9])) UTC`)
+
+	timeHr := timerExp.FindStringSubmatch(currTimer)[5]
+	timeMin := timerExp.FindStringSubmatch(currTimer)[6]
+
+	now := time.Now()
+
+	later := createLater(now, timeHr, timeMin)
+
+	timeDiff := later.Sub(now)
+
+	if currMap == "Battle Royale: World's Edge" {
+		m.sendMessagef("No (%s)", fmtDuration(timeDiff))
+	} else {
+		m.sendMessagef("Yes (%s)", fmtDuration(timeDiff))
+	}
+
+	return
+}
+
+func createLater(now time.Time, hr string, min string) time.Time {
+	hrInt, _ := strconv.ParseInt(hr, 0, 64)
+	minInt, _ := strconv.ParseInt(min, 0, 64)
+	res := time.Date(now.Year(), now.Month(), now.Day(), int(hrInt), int(minInt), 00, 00, now.UTC().Location())
+	if hr == "00" {
+		res.AddDate(0, 0, 1)
+	}
+
+	return res
 }
