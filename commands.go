@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/caromo/rinako/collections"
 	"github.com/pkg/errors"
+	"golang.org/x/net/html"
 )
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
@@ -83,6 +85,8 @@ func (m *messageEvent) processCommand(command string, args []string) (err error)
 		m.untag(args)
 	case rinako.config.RouletteName:
 		m.roulette()
+	case "isapexplayable":
+
 	default:
 	}
 
@@ -451,4 +455,28 @@ func (m *messageEvent) roulette() {
 	rand.Seed(time.Now().Unix())
 	m.sendMessagef("<@%s> %s", serv.RouletteNames[rand.Intn(len(serv.RouletteNames))], rinako.config.RouletteRText)
 
+}
+
+func (m *messageEvent) checkApex() {
+	url := "https://apexlegendsstatus.com/current-map"
+	resp, err := http.Get(url)
+	if err != nil {
+		m.sendMessage("The URL link is probably busted")
+	}
+	defer resp.Body.Close()
+	doc, err := html.Parse(resp.Body)
+	if err != nil {
+		m.sendMessage("Parsing no workie")
+	}
+	var f func(*html.Node)
+	f = func(n *html.Node) {
+		if n.Type == html.TextNode && strings.Contains(n.Data, "Battle Royale") {
+			m.sendMessage(n.Data)
+			return
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			f(c)
+		}
+	}
+	f(doc)
 }
