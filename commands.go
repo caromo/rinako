@@ -471,7 +471,11 @@ func (m *messageEvent) checkApex() {
 	var f func(*html.Node)
 	f = func(n *html.Node) {
 		if n.Type == html.TextNode && strings.Contains(n.Data, "Battle Royale") {
-			m.sendMessage(n.Data)
+			playable := "Yes"
+			if n.Data == "Battle Royale: World's Edge" {
+				playable = "No"
+			}
+			m.sendMessage(playable)
 			return
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
