@@ -86,7 +86,7 @@ func (m *messageEvent) processCommand(command string, args []string) (err error)
 	case rinako.config.RouletteName:
 		m.roulette()
 	case "isapexplayable":
-
+		m.checkApex()
 	default:
 	}
 
