@@ -490,7 +490,34 @@ func (m *messageEvent) checkApex() {
 		}
 	}
 	f(doc, &mapDone, &timerDone, &currMap, &currTimer)
+
+	timerExp := regexp.MustCompile(`From ((0[0-9]|1[0-9]|2[0-3]):([0-5][0-9])) to ((0[0-9]|1[0-9]|2[0-3]):([0-5][0-9])) UTC`)
+
+	timeHr := timerExp.FindStringSubmatch(currTimer)[5]
+	timeMin := timerExp.FindStringSubmatch(currTimer)[6]
+
+	now := time.Now()
+
+	later := createLater(now, timeHr, timeMin)
+
+	timeDiff := later.Sub(now)
+
 	if currMap == "Battle Royale: World's Edge" {
-		m.sendMessage("no")
+		m.sendMessagef("No (%s)", fmtDuration(timeDiff))
+	} else {
+		m.sendMessagef("Yes (%s)", fmtDuration(timeDiff))
 	}
+
+	return
+}
+
+func createLater(now time.Time, hr string, min string) time.Time {
+	hrInt, _ := strconv.ParseInt(hr, 0, 64)
+	minInt, _ := strconv.ParseInt(min, 0, 64)
+	res := time.Date(now.Year(), now.Month(), now.Day(), int(hrInt), int(minInt), 00, 00, now.UTC().Location())
+	if hr == "00" {
+		res.AddDate(0, 0, 1)
+	}
+
+	return res
 }

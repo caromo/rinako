@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/caromo/rinako/collections"
 )
@@ -89,4 +91,12 @@ func extractQuotes(in string) []string {
 	re := regexp.MustCompile(`"[^"]+"`)
 	newStrs := re.FindAllString(in, -1)
 	return newStrs
+}
+
+func fmtDuration(d time.Duration) string {
+	d = d.Round(time.Minute)
+	h := d / time.Hour
+	d -= h * time.Hour
+	m := d / time.Minute
+	return fmt.Sprintf("%02d:%02d", h, m)
 }
