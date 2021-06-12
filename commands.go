@@ -516,7 +516,7 @@ func createLater(now time.Time, hr string, min string) time.Time {
 	minInt, _ := strconv.ParseInt(min, 0, 64)
 	res := time.Date(now.Year(), now.Month(), now.Day(), int(hrInt), int(minInt), 00, 00, now.UTC().Location())
 	if hr == "00" {
-		res.AddDate(0, 0, 1)
+		res = res.AddDate(0, 0, 1)
 	}
 
 	return res
