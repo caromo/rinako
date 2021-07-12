@@ -87,6 +87,8 @@ func (m *messageEvent) processCommand(command string, args []string) (err error)
 		m.roulette()
 	case "isapexplayable":
 		m.checkApex()
+	case "choose":
+		m.choose(args)
 	default:
 	}
 
@@ -424,7 +426,7 @@ func (m *messageEvent) tag(args []string) {
 //...but they can't remove themselves
 func (m *messageEvent) untag(args []string) {
 	if len(args) == 0 {
-		m.sendMessagef("Use: %suntagtag @<name>", rinako.config.Discriminator)
+		m.sendMessagef("Use: %suntag @<name>", rinako.config.Discriminator)
 	} else if !m.isElevatedOrOwner() {
 		return
 	}
@@ -511,12 +513,26 @@ func (m *messageEvent) checkApex() {
 	return
 }
 
+func (m *messageEvent) choose(args []string) {
+	if len(args) < 2 {
+		m.sendMessagef("Use: %schoose \"choice1\" \"choice2\"...", rinako.config.Discriminator)
+	} else {
+		choiceStr := strings.Join(args, " ")
+		r := regexp.MustCompile(`[^\s"']+|"([^"]*)"|'([^']*)`)
+		arr := r.FindAllString(choiceStr, -1)
+
+		choice := rand.Intn(len(arr) - 1)
+		m.sendMessagef("I choose %s", arr[choice])
+	}
+	//foreach:
+}
+
 func createLater(now time.Time, hr string, min string) time.Time {
 	hrInt, _ := strconv.ParseInt(hr, 0, 64)
 	minInt, _ := strconv.ParseInt(min, 0, 64)
 	res := time.Date(now.Year(), now.Month(), now.Day(), int(hrInt), int(minInt), 00, 00, now.UTC().Location())
-	//The max time diff is 2 hours, so 
-	if ((24 - now.Hour() <= 2) && (hrInt <= 1)) {
+	//The max time diff is 2 hours, so
+	if (24-now.Hour() <= 2) && (hrInt <= 1) {
 		res = res.AddDate(0, 0, 1)
 	}
 
