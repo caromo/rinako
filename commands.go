@@ -521,7 +521,7 @@ func (m *messageEvent) choose(args []string) {
 		r := regexp.MustCompile(`[^\s"']+|"([^"]*)"|'([^']*)`)
 		arr := r.FindAllString(choiceStr, -1)
 
-		choice := rand.Intn(len(arr) - 1)
+		choice := rand.Intn(len(arr))
 		m.sendMessagef("I choose %s", arr[choice])
 	}
 	//foreach:
