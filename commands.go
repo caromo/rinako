@@ -531,7 +531,7 @@ func createLater(now time.Time, hr string, min string) time.Time {
 	hrInt, _ := strconv.ParseInt(hr, 0, 64)
 	minInt, _ := strconv.ParseInt(min, 0, 64)
 	res := time.Date(now.Year(), now.Month(), now.Day(), int(hrInt), int(minInt), 00, 00, now.UTC().Location())
-	//The max time diff is 2 hours, so this should suffice.
+	//The max time diff is 2 hours, so this should suffice...
 	if (24-now.Hour() <= 2) && (hrInt <= 1) {
 		res = res.AddDate(0, 0, 1)
 	}
