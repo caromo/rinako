@@ -87,6 +87,8 @@ func (m *messageEvent) processCommand(command string, args []string) (err error)
 		m.roulette()
 	case "isapexplayable":
 		m.checkApex()
+	case "choose":
+		m.choose(args)
 	default:
 	}
 
@@ -424,7 +426,7 @@ func (m *messageEvent) tag(args []string) {
 //...but they can't remove themselves
 func (m *messageEvent) untag(args []string) {
 	if len(args) == 0 {
-		m.sendMessagef("Use: %suntagtag @<name>", rinako.config.Discriminator)
+		m.sendMessagef("Use: %suntag @<name>", rinako.config.Discriminator)
 	} else if !m.isElevatedOrOwner() {
 		return
 	}
@@ -509,6 +511,20 @@ func (m *messageEvent) checkApex() {
 	}
 
 	return
+}
+
+func (m *messageEvent) choose(args []string) {
+	if len(args) < 2 {
+		m.sendMessagef("Use: %schoose \"choice1\" \"choice2\"...", rinako.config.Discriminator)
+	} else {
+		choiceStr := strings.Join(args, " ")
+		r := regexp.MustCompile(`[^\s"']+|"([^"]*)"|'([^']*)`)
+		arr := r.FindAllString(choiceStr, -1)
+
+		choice := rand.Intn(len(arr))
+		m.sendMessagef("I choose %s", arr[choice])
+	}
+	//foreach:
 }
 
 func createLater(now time.Time, hr string, min string) time.Time {
