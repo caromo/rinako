@@ -504,10 +504,10 @@ func (m *messageEvent) checkApex() {
 
 	timeDiff := later.Sub(now)
 
-	if currMap == "Battle Royale: World's Edge" {
-		m.sendMessagef("No (%s remaining)", fmtDuration(timeDiff))
+	if currMap == "Battle Royale: Storm Point" {
+		m.sendMessagef("No (%s - %s remaining)", currMap, fmtDuration(timeDiff))
 	} else {
-		m.sendMessagef("Yes (%s remaining)", fmtDuration(timeDiff))
+		m.sendMessagef("Yes (%s - %s remaining)", currMap, fmtDuration(timeDiff))
 	}
 
 	return
