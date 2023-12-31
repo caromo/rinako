@@ -46,7 +46,20 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if err = mEvent.processCommand(command, args); err != nil {
 			log.Printf("Error executing %s with args %s: %s", command, args, err)
 		}
+	} else {
+		twtxPattern := "http(s)?:\\/\\/(x|twitter)\\.com\\/(.+)"
+		r, err := regexp.Compile(twtxPattern)
+		if err != nil {
+			log.Printf("Error compiling regex: %s", err)
+		}
+		matches := r.FindStringSubmatch(m.Content)
+		if matches != nil {
+			// log.Printf("Found twitter link: %s", matches[3])
+			newLink := "https:\\/\\/fixupx.com\\/" + matches[3]
+			s.ChannelMessageSendReply(m.ChannelID, newLink, m.MessageReference)
+		}
 	}
+
 }
 
 func (m *messageEvent) processCommand(command string, args []string) (err error) {
@@ -89,11 +102,18 @@ func (m *messageEvent) processCommand(command string, args []string) (err error)
 		m.checkApex()
 	case "choose":
 		m.choose(args)
+	// case "deathroll":
+	// 	m.deathroll()
 	default:
 	}
 
 	return
 }
+
+// func (m *messageEvent) deathroll() {
+// 	user := m.member.User.ID
+
+// }
 
 func checkExists(m *messageEvent, role string) (exists bool) {
 	roleDescs := rinako.GetAllowedRolesForServer(m.guild.ID)
