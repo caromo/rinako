@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
@@ -17,7 +18,9 @@ import (
 )
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
-
+	fmt.Printf("Message: %s\n", m.Content)
+	//pretty print the message create event
+	// spew.Dump(m)
 	// Ignore all messages created by the bot itself
 	// This isn't required in this specific example but it's a good practice.
 	if m.Author.ID == s.State.User.ID {
@@ -46,21 +49,138 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if err = mEvent.processCommand(command, args); err != nil {
 			log.Printf("Error executing %s with args %s: %s", command, args, err)
 		}
-	} else {
-		twtxPattern := "http(s)?:\\/\\/(x|twitter)\\.com\\/(.+)"
-		r, err := regexp.Compile(twtxPattern)
+		return
+	}
+
+	// if something matches this pattern:
+	if strings.HasPrefix(m.Content, "https://twitter.com") || strings.HasPrefix(m.Content, "https://x.com") {
+		linkForAPI, err := convertToVXLink(m.Content)
 		if err != nil {
-			log.Printf("Error compiling regex: %s", err)
+			log.Printf("Error converting to vxtwitter link: %s", err)
+			s.ChannelMessageSendReply(m.ChannelID, "Error parsing Twitter link...", m.Message.Reference())
+			return
 		}
-		matches := r.FindStringSubmatch(m.Content)
-		if matches != nil {
-			// log.Printf("Found twitter link: %s", matches[3])
-			newLink := "https:\\/\\/fixupx.com\\/" + matches[3]
-			s.ChannelMessageSendReply(m.ChannelID, newLink, m.MessageReference)
-		}
+		HandleTweet(s, m.Message, linkForAPI, true)
 	}
 
 }
+
+//HandleTweet(message, url) will be recursive and handle one level of a tweet at a time
+func HandleTweet(s *discordgo.Session, message *discordgo.Message, url string, reply bool) {
+	fmt.Printf("Handling tweet: %s\n", url)
+	tweet, err := getTweet(url)
+	if err != nil {
+		log.Printf("Error getting tweet: %s", err)
+		return
+	}
+
+	fmt.Printf("Got tweet: %v\n", tweet)
+
+	embed, videoOpt, err := buildEmbed(tweet)
+	if err != nil {
+		log.Printf("Error building embed: %s", err)
+		return
+	}
+
+	fmt.Printf("Got embed: %v\n", embed)
+
+	if reply {
+		s.ChannelMessageSendEmbedReply(message.ChannelID, embed, message.Reference())
+	} else {
+		s.ChannelMessageSendEmbed(message.ChannelID, embed)
+	}
+	if videoOpt.Needed {
+		s.ChannelMessageSend(message.ChannelID, videoOpt.URL)
+	}
+
+	if tweet.QrtURL != nil {
+		fmt.Printf("Found qrt: %s\n", *tweet.QrtURL)
+		//convert to vxtwitter api link
+		newLink, err := convertToVXLink(*tweet.QrtURL)
+		if err != nil {
+			log.Printf("Error converting to vxtwitter link: %s", err)
+			return
+		}
+		// Sleep for 1 second
+		time.Sleep(1 * time.Second)
+		// Recursively call HandleTweet, no reply
+		HandleTweet(s, message, newLink, false)
+	}
+}
+
+func convertToVXLink(url string) (newLink string, err error) {
+	twtxPattern := "http(s)?:\\/\\/(x|twitter)\\.com\\/(.+)"
+	r, err := regexp.Compile(twtxPattern)
+	if err != nil {
+		log.Printf("Error compiling regex: %s", err)
+		return
+	}
+	matches := r.FindStringSubmatch(url)
+	if matches == nil {
+		err = errors.New("No matches found")
+		return
+	} else {
+		newLink = "https://api.vxtwitter.com/" + matches[3]
+		return
+	}
+}
+
+func buildEmbed(tweet *Tweet) (*discordgo.MessageEmbed, VideoInfo, error) {
+	videoOpt := VideoInfo{}
+	color, _ := strconv.ParseUint(rinako.config.Color, 16, 32)
+	// turn the tweet into an embed
+	const layout = "Mon Jan 2 15:04:05 -0700 2006"
+	tweetTime, err := time.Parse(layout, tweet.Date)
+	if err != nil {
+		log.Printf("Error parsing tweet time: %s", err)
+	}
+	outputLayout := "2 Jan 2006 at 15:04:05"
+	dateStr := tweetTime.Format(outputLayout)
+	toBuild := NewEmbed().
+		SetTitle(fmt.Sprintf("Tweet by %s (%s)", tweet.UserName, tweet.UserScreenName)).
+		SetURL(tweet.TweetURL).
+		SetDescription(tweet.Text).
+		SetColor(int(color)).
+		SetThumbnail(tweet.UserProfileImageURL).
+		SetFooter(dateStr, "https://i.imgur.com/LKzfWwl.png")
+
+	if len(tweet.MediaExtended) > 0 {
+		switch tweet.MediaExtended[0].Type {
+		case "video":
+			log.Printf("Video: %s\n", tweet.MediaExtended[0].URL)
+			videoOpt.Needed = true
+			videoOpt.URL = tweet.MediaExtended[0].URL
+		case "gif":
+			log.Printf("Gif: %s\n", tweet.MediaExtended[0].URL)
+			videoOpt.Needed = true
+			videoOpt.URL = tweet.MediaExtended[0].URL
+		case "image":
+			toBuild.SetImage(tweet.MediaExtended[0].URL)
+		default:
+			toBuild.SetImage(tweet.MediaExtended[0].URL)
+		}
+	}
+
+	return toBuild.MessageEmbed, videoOpt, err
+}
+
+func getTweet(url string) (tweet *Tweet, err error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		fmt.Printf("Error getting embed from API: %s", err)
+		return
+	}
+	defer resp.Body.Close()
+	tweet = &Tweet{}
+	err = json.NewDecoder(resp.Body).Decode(tweet)
+	if err != nil {
+		fmt.Printf("Error decoding json: %s", err)
+		return
+	}
+	return
+}
+
+//TODO: GetEmbedFromTweet, decouple getting from api and making the embed
 
 func (m *messageEvent) processCommand(command string, args []string) (err error) {
 	switch command {
@@ -557,4 +677,295 @@ func createLater(now time.Time, hr string, min string) time.Time {
 	}
 
 	return res
+}
+
+type MediaExtended struct {
+	AltText        *string `json:"altText"`
+	DurationMillis int     `json:"duration_millis"`
+	Size           Size    `json:"size"`
+	ThumbnailURL   string  `json:"thumbnail_url"`
+	Type           string  `json:"type"`
+	URL            string  `json:"url"`
+}
+
+type Size struct {
+	Height int `json:"height"`
+	Width  int `json:"width"`
+}
+
+type Tweet struct {
+	CommunityNote       *string         `json:"communityNote"`
+	ConversationID      string          `json:"conversationID"`
+	Date                string          `json:"date"`
+	DateEpoch           int             `json:"date_epoch"`
+	Hashtags            []string        `json:"hashtags"`
+	Likes               int             `json:"likes"`
+	MediaURLs           []string        `json:"mediaURLs"`
+	MediaExtended       []MediaExtended `json:"media_extended"`
+	PossiblySensitive   bool            `json:"possibly_sensitive"`
+	QrtURL              *string         `json:"qrtURL"`
+	Replies             int             `json:"replies"`
+	Retweets            int             `json:"retweets"`
+	Text                string          `json:"text"`
+	TweetID             string          `json:"tweetID"`
+	TweetURL            string          `json:"tweetURL"`
+	UserName            string          `json:"user_name"`
+	UserProfileImageURL string          `json:"user_profile_image_url"`
+	UserScreenName      string          `json:"user_screen_name"`
+}
+
+type VideoInfo struct {
+	Needed        bool
+	SwitchToRawVX bool
+	URL           string
+}
+
+// from https://gist.github.com/Necroforger/8b0b70b1a69fa7828b8ad6387ebb3835
+
+// Constants for message embed character limits
+const (
+	EmbedLimitTitle       = 256
+	EmbedLimitDescription = 2048
+	EmbedLimitFieldValue  = 1024
+	EmbedLimitFieldName   = 256
+	EmbedLimitField       = 25
+	EmbedLimitFooter      = 2048
+	EmbedLimit            = 4000
+)
+
+type Embed struct {
+	*discordgo.MessageEmbed
+}
+
+//NewEmbed returns a new embed object
+func NewEmbed() *Embed {
+	return &Embed{&discordgo.MessageEmbed{}}
+}
+
+//SetTitle ...
+func (e *Embed) SetTitle(name string) *Embed {
+	e.Title = name
+	return e
+}
+
+//SetDescription [desc]
+func (e *Embed) SetDescription(description string) *Embed {
+	if len(description) > 2048 {
+		description = description[:2048]
+	}
+	e.Description = description
+	return e
+}
+
+//AddField [name] [value]
+func (e *Embed) AddField(name, value string) *Embed {
+	if len(value) > 1024 {
+		value = value[:1024]
+	}
+
+	if len(name) > 1024 {
+		name = name[:1024]
+	}
+
+	e.Fields = append(e.Fields, &discordgo.MessageEmbedField{
+		Name:  name,
+		Value: value,
+	})
+
+	return e
+
+}
+
+//SetFooter [Text] [iconURL]
+func (e *Embed) SetFooter(args ...string) *Embed {
+	iconURL := ""
+	text := ""
+	proxyURL := ""
+
+	switch {
+	case len(args) > 2:
+		proxyURL = args[2]
+		fallthrough
+	case len(args) > 1:
+		iconURL = args[1]
+		fallthrough
+	case len(args) > 0:
+		text = args[0]
+	case len(args) == 0:
+		return e
+	}
+
+	e.Footer = &discordgo.MessageEmbedFooter{
+		IconURL:      iconURL,
+		Text:         text,
+		ProxyIconURL: proxyURL,
+	}
+
+	return e
+}
+
+//SetImage ...
+func (e *Embed) SetImage(args ...string) *Embed {
+	var URL string
+	var proxyURL string
+
+	if len(args) == 0 {
+		return e
+	}
+	if len(args) > 0 {
+		URL = args[0]
+	}
+	if len(args) > 1 {
+		proxyURL = args[1]
+	}
+	e.Image = &discordgo.MessageEmbedImage{
+		URL:      URL,
+		ProxyURL: proxyURL,
+	}
+	return e
+}
+
+//SetVideo ...
+func (e *Embed) SetVideo(args ...string) *Embed {
+	var URL string
+
+	if len(args) == 0 {
+		return e
+	}
+	if len(args) > 0 {
+		URL = args[0]
+	}
+	e.Video = &discordgo.MessageEmbedVideo{
+		URL: URL,
+	}
+	return e
+}
+
+//SetThumbnail ...
+func (e *Embed) SetThumbnail(args ...string) *Embed {
+	var URL string
+	var proxyURL string
+
+	if len(args) == 0 {
+		return e
+	}
+	if len(args) > 0 {
+		URL = args[0]
+	}
+	if len(args) > 1 {
+		proxyURL = args[1]
+	}
+	e.Thumbnail = &discordgo.MessageEmbedThumbnail{
+		URL:      URL,
+		ProxyURL: proxyURL,
+	}
+	return e
+}
+
+//SetAuthor ...
+func (e *Embed) SetAuthor(args ...string) *Embed {
+	var (
+		name     string
+		iconURL  string
+		URL      string
+		proxyURL string
+	)
+
+	if len(args) == 0 {
+		return e
+	}
+	if len(args) > 0 {
+		name = args[0]
+	}
+	if len(args) > 1 {
+		iconURL = args[1]
+	}
+	if len(args) > 2 {
+		URL = args[2]
+	}
+	if len(args) > 3 {
+		proxyURL = args[3]
+	}
+
+	e.Author = &discordgo.MessageEmbedAuthor{
+		Name:         name,
+		IconURL:      iconURL,
+		URL:          URL,
+		ProxyIconURL: proxyURL,
+	}
+
+	return e
+}
+
+//SetURL ...
+func (e *Embed) SetURL(URL string) *Embed {
+	e.URL = URL
+	return e
+}
+
+//SetColor ...
+func (e *Embed) SetColor(clr int) *Embed {
+	e.Color = clr
+	return e
+}
+
+// InlineAllFields sets all fields in the embed to be inline
+func (e *Embed) InlineAllFields() *Embed {
+	for _, v := range e.Fields {
+		v.Inline = true
+	}
+	return e
+}
+
+// Truncate truncates any embed value over the character limit.
+func (e *Embed) Truncate() *Embed {
+	e.TruncateDescription()
+	e.TruncateFields()
+	e.TruncateFooter()
+	e.TruncateTitle()
+	return e
+}
+
+// TruncateFields truncates fields that are too long
+func (e *Embed) TruncateFields() *Embed {
+	if len(e.Fields) > 25 {
+		e.Fields = e.Fields[:EmbedLimitField]
+	}
+
+	for _, v := range e.Fields {
+
+		if len(v.Name) > EmbedLimitFieldName {
+			v.Name = v.Name[:EmbedLimitFieldName]
+		}
+
+		if len(v.Value) > EmbedLimitFieldValue {
+			v.Value = v.Value[:EmbedLimitFieldValue]
+		}
+
+	}
+	return e
+}
+
+// TruncateDescription ...
+func (e *Embed) TruncateDescription() *Embed {
+	if len(e.Description) > EmbedLimitDescription {
+		e.Description = e.Description[:EmbedLimitDescription]
+	}
+	return e
+}
+
+// TruncateTitle ...
+func (e *Embed) TruncateTitle() *Embed {
+	if len(e.Title) > EmbedLimitTitle {
+		e.Title = e.Title[:EmbedLimitTitle]
+	}
+	return e
+}
+
+// TruncateFooter ...
+func (e *Embed) TruncateFooter() *Embed {
+	if e.Footer != nil && len(e.Footer.Text) > EmbedLimitFooter {
+		e.Footer.Text = e.Footer.Text[:EmbedLimitFooter]
+	}
+	return e
 }

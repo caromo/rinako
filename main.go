@@ -58,6 +58,11 @@ func main() {
 	}
 
 	rinako.session, err = discordgo.New("Bot " + rinako.config.AuthToken)
+	if err != nil {
+		fmt.Println("error creating Discord session,", err)
+		return
+	}
+	rinako.session.Identify.Intents = discordgo.IntentsGuildMessages
 
 	// Register the messageCreate func as a callback for MessageCreate events.
 	// dg.AddHandler(roleMessageCreate)
