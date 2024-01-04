@@ -13,6 +13,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/caromo/rinako/collections"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	"golang.org/x/net/html"
 )
@@ -70,15 +71,17 @@ func HandleTweet(s *discordgo.Session, message *discordgo.Message, url string, r
 		return
 	}
 
-	embed, videoOpt, err := buildEmbed(tweet)
+	embeds, videos, err := buildEmbed(tweet)
 	if err != nil {
 		log.Printf("Error building embed: %s", err)
 		return
 	}
 
+	spew.Dump(embeds)
+
 	if reply {
 		s.ChannelMessageSendComplex(message.ChannelID, &discordgo.MessageSend{
-			Embeds: []*discordgo.MessageEmbed{embed},
+			Embeds: embeds,
 			AllowedMentions: &discordgo.MessageAllowedMentions{
 				Parse: []discordgo.AllowedMentionType{},
 			},
@@ -86,10 +89,12 @@ func HandleTweet(s *discordgo.Session, message *discordgo.Message, url string, r
 		})
 		// s.ChannelMessageSendEmbedReply(message.ChannelID, embed, message.Reference())
 	} else {
-		s.ChannelMessageSendEmbed(message.ChannelID, embed)
+		s.ChannelMessageSendEmbeds(message.ChannelID, embeds)
 	}
-	if videoOpt.Needed {
-		s.ChannelMessageSend(message.ChannelID, videoOpt.URL)
+	for _, videoOpt := range videos {
+		if videoOpt.Needed {
+			s.ChannelMessageSend(message.ChannelID, videoOpt.URL)
+		}
 	}
 
 	if tweet.QrtURL != nil {
@@ -124,8 +129,7 @@ func convertToVXLink(url string) (newLink string, err error) {
 	}
 }
 
-func buildEmbed(tweet *Tweet) (*discordgo.MessageEmbed, VideoInfo, error) {
-	videoOpt := VideoInfo{}
+func buildEmbed(tweet *Tweet) ([]*discordgo.MessageEmbed, []VideoInfo, error) {
 	color, _ := strconv.ParseUint(rinako.config.Color, 16, 32)
 	// turn the tweet into an embed
 	const layout = "Mon Jan 2 15:04:05 -0700 2006"
@@ -135,32 +139,49 @@ func buildEmbed(tweet *Tweet) (*discordgo.MessageEmbed, VideoInfo, error) {
 	}
 	outputLayout := "2 Jan 2006 at 15:04:05"
 	dateStr := tweetTime.Format(outputLayout)
-	toBuild := NewEmbed().
+	base := NewEmbed().
 		SetTitle(fmt.Sprintf("Tweet by %s (%s)", tweet.UserName, tweet.UserScreenName)).
 		SetURL(tweet.TweetURL).
 		SetDescription(tweet.Text).
 		SetColor(int(color)).
 		SetThumbnail(tweet.UserProfileImageURL).
 		SetFooter(dateStr, "https://i.imgur.com/LKzfWwl.png")
-
+	videos := []VideoInfo{}
+	embeds := []*discordgo.MessageEmbed{base.MessageEmbed}
 	if len(tweet.MediaExtended) > 0 {
-		switch tweet.MediaExtended[0].Type {
-		case "video":
-			log.Printf("Video: %s\n", tweet.MediaExtended[0].URL)
-			videoOpt.Needed = true
-			videoOpt.URL = tweet.MediaExtended[0].URL
-		case "gif":
-			log.Printf("Gif: %s\n", tweet.MediaExtended[0].URL)
-			videoOpt.Needed = true
-			videoOpt.URL = tweet.MediaExtended[0].URL
-		case "image":
-			toBuild.SetImage(tweet.MediaExtended[0].URL)
-		default:
-			toBuild.SetImage(tweet.MediaExtended[0].URL)
+		for _, media := range tweet.MediaExtended {
+			switch media.Type {
+			case "video":
+				log.Printf("Video: %s\n", media.URL)
+				toAdd := VideoInfo{
+					Needed:        true,
+					SwitchToRawVX: false,
+					URL:           media.URL,
+				}
+				videos = append(videos, toAdd)
+			case "gif":
+				log.Printf("GIF: %s\n", media.URL)
+				toAdd := VideoInfo{
+					Needed:        true,
+					SwitchToRawVX: false,
+					URL:           media.URL,
+				}
+				videos = append(videos, toAdd)
+			case "image":
+				fmt.Printf("Adding image: %s\n", media.URL)
+				toAdd := NewEmbed().SetURL(tweet.TweetURL).SetImage(media.URL).MessageEmbed
+				embeds = append(embeds, toAdd)
+				fmt.Printf("Current # of embeds: %d\n", len(embeds))
+			default:
+				fmt.Printf("Adding imageB: %s\n", media.URL)
+				toAdd := NewEmbed().SetURL(tweet.TweetURL).SetImage(media.URL).MessageEmbed
+				embeds = append(embeds, toAdd)
+				fmt.Printf("Current # of embedsB: %d\n", len(embeds))
+			}
 		}
 	}
 
-	return toBuild.MessageEmbed, videoOpt, err
+	return embeds, videos, err
 }
 
 func getTweet(url string) (tweet *Tweet, err error) {
