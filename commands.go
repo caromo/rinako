@@ -50,7 +50,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	// if something matches this pattern:
-	if strings.HasPrefix(m.Content, "https://twitter.com") || strings.HasPrefix(m.Content, "https://x.com") {
+	if strings.Contains(m.Content, "https://twitter.com") || strings.Contains(m.Content, "https://x.com") {
 		linkForAPI, err := convertToVXLink(m.Content)
 		if err != nil {
 			log.Printf("Error converting to vxtwitter link: %s", err)
@@ -77,7 +77,14 @@ func HandleTweet(s *discordgo.Session, message *discordgo.Message, url string, r
 	}
 
 	if reply {
-		s.ChannelMessageSendEmbedReply(message.ChannelID, embed, message.Reference())
+		s.ChannelMessageSendComplex(message.ChannelID, &discordgo.MessageSend{
+			Embeds: []*discordgo.MessageEmbed{embed},
+			AllowedMentions: &discordgo.MessageAllowedMentions{
+				Parse: []discordgo.AllowedMentionType{},
+			},
+			Reference: message.Reference(),
+		})
+		// s.ChannelMessageSendEmbedReply(message.ChannelID, embed, message.Reference())
 	} else {
 		s.ChannelMessageSendEmbed(message.ChannelID, embed)
 	}
