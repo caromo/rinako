@@ -18,9 +18,6 @@ import (
 )
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
-	fmt.Printf("Message: %s\n", m.Content)
-	//pretty print the message create event
-	// spew.Dump(m)
 	// Ignore all messages created by the bot itself
 	// This isn't required in this specific example but it's a good practice.
 	if m.Author.ID == s.State.User.ID {
@@ -67,22 +64,17 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 //HandleTweet(message, url) will be recursive and handle one level of a tweet at a time
 func HandleTweet(s *discordgo.Session, message *discordgo.Message, url string, reply bool) {
-	fmt.Printf("Handling tweet: %s\n", url)
 	tweet, err := getTweet(url)
 	if err != nil {
 		log.Printf("Error getting tweet: %s", err)
 		return
 	}
 
-	fmt.Printf("Got tweet: %v\n", tweet)
-
 	embed, videoOpt, err := buildEmbed(tweet)
 	if err != nil {
 		log.Printf("Error building embed: %s", err)
 		return
 	}
-
-	fmt.Printf("Got embed: %v\n", embed)
 
 	if reply {
 		s.ChannelMessageSendEmbedReply(message.ChannelID, embed, message.Reference())
