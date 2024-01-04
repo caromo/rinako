@@ -13,7 +13,6 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/caromo/rinako/collections"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	"golang.org/x/net/html"
 )
@@ -76,8 +75,6 @@ func HandleTweet(s *discordgo.Session, message *discordgo.Message, url string, r
 		log.Printf("Error building embed: %s", err)
 		return
 	}
-
-	spew.Dump(embeds)
 
 	if reply {
 		s.ChannelMessageSendComplex(message.ChannelID, &discordgo.MessageSend{
