@@ -146,7 +146,7 @@ func buildEmbed(tweet *Tweet) ([]*discordgo.MessageEmbed, []VideoInfo, error) {
 	videos := []VideoInfo{}
 	embeds := []*discordgo.MessageEmbed{base.MessageEmbed}
 	if len(tweet.MediaExtended) > 0 {
-		for _, media := range tweet.MediaExtended {
+		for i, media := range tweet.MediaExtended {
 			switch media.Type {
 			case "video":
 				log.Printf("Video: %s\n", media.URL)
@@ -168,8 +168,15 @@ func buildEmbed(tweet *Tweet) ([]*discordgo.MessageEmbed, []VideoInfo, error) {
 				fmt.Printf("Adding image: %s\n", media.URL)
 				heightstr := fmt.Sprintf("%d", media.Size.Height)
 				widthstr := fmt.Sprintf("%d", media.Size.Width)
-				toAdd := NewEmbed().SetURL(tweet.TweetURL).SetImage(media.URL, heightstr, widthstr).MessageEmbed
-				embeds = append(embeds, toAdd)
+
+				if i == 0 {
+					toAdd := base.SetImage(media.URL, heightstr, widthstr).MessageEmbed
+					embeds[0] = toAdd
+				} else {
+					toAdd := NewEmbed().SetURL(tweet.TweetURL).SetImage(media.URL, heightstr, widthstr).MessageEmbed
+					embeds = append(embeds, toAdd)
+				}
+
 				fmt.Printf("Current # of embeds: %d\n", len(embeds))
 			default:
 				fmt.Printf("Adding imageB: %s\n", media.URL)
