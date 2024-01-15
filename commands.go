@@ -110,7 +110,7 @@ func HandleTweet(s *discordgo.Session, message *discordgo.Message, url string, r
 }
 
 func convertToVXLink(url string) (newLink string, err error) {
-	twtxPattern := "http(s)?:\\/\\/(x|twitter)\\.com\\/(.+)"
+	twtxPattern := "http(s)?:\\/\\/(x|twitter)\\.com\\/(.+)\\/(.+)"
 	r, err := regexp.Compile(twtxPattern)
 	if err != nil {
 		log.Printf("Error compiling regex: %s", err)
@@ -166,7 +166,9 @@ func buildEmbed(tweet *Tweet) ([]*discordgo.MessageEmbed, []VideoInfo, error) {
 				videos = append(videos, toAdd)
 			case "image":
 				fmt.Printf("Adding image: %s\n", media.URL)
-				toAdd := NewEmbed().SetURL(tweet.TweetURL).SetImage(media.URL).MessageEmbed
+				heightstr := fmt.Sprintf("%d", media.Size.Height)
+				widthstr := fmt.Sprintf("%d", media.Size.Width)
+				toAdd := NewEmbed().SetURL(tweet.TweetURL).SetImage(media.URL, heightstr, widthstr).MessageEmbed
 				embeds = append(embeds, toAdd)
 				fmt.Printf("Current # of embeds: %d\n", len(embeds))
 			default:
@@ -825,20 +827,43 @@ func (e *Embed) SetFooter(args ...string) *Embed {
 func (e *Embed) SetImage(args ...string) *Embed {
 	var URL string
 	var proxyURL string
+	var length int
+	var width int
+	var err error
+	image := &discordgo.MessageEmbedImage{}
 
 	if len(args) == 0 {
 		return e
 	}
 	if len(args) > 0 {
 		URL = args[0]
+		image.URL = URL
 	}
-	if len(args) > 1 {
+	if len(args) > 2 {
+		length, err = strconv.Atoi(args[1])
+		if err != nil {
+			log.Printf("Error converting length to int: %s", err)
+			length = 0
+		}
+		if length != 0 {
+			image.Height = length
+		}
+
+		width, err = strconv.Atoi(args[2])
+		if err != nil {
+			log.Printf("Error converting width to int: %s", err)
+			width = 0
+		}
+		if width != 0 {
+			image.Width = width
+		}
+
+	}
+	if len(args) > 3 {
 		proxyURL = args[1]
+		image.ProxyURL = proxyURL
 	}
-	e.Image = &discordgo.MessageEmbedImage{
-		URL:      URL,
-		ProxyURL: proxyURL,
-	}
+	e.Image = image
 	return e
 }
 
