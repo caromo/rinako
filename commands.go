@@ -110,7 +110,7 @@ func HandleTweet(s *discordgo.Session, message *discordgo.Message, url string, r
 }
 
 func convertToVXLink(url string) (newLink string, err error) {
-	twtxPattern := "http(s)?:\\/\\/(x|twitter)\\.com\\/(.+)\\/(.+)"
+	twtxPattern := "http(s)?:\\/\\/(x|twitter)\\.com\\/([a-zA-Z0-9_]+\\/status\\/([0-9]+))"
 	r, err := regexp.Compile(twtxPattern)
 	if err != nil {
 		log.Printf("Error compiling regex: %s", err)
@@ -200,7 +200,8 @@ func getTweet(url string) (tweet *Tweet, err error) {
 	tweet = &Tweet{}
 	err = json.NewDecoder(resp.Body).Decode(tweet)
 	if err != nil {
-		fmt.Printf("Error decoding json: %s", err)
+		fmt.Printf("json: %s", resp.Body)
+		fmt.Printf("Error decoding json: %s\n", err)
 		return
 	}
 	return
