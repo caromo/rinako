@@ -94,8 +94,8 @@ func HandleTweet(s *discordgo.Session, message *discordgo.Message, url string, r
 		log.Printf("Error getting tweet: %s", err)
 		return
 	}
-
-	time.Sleep(1 * time.Second)
+	//sleep for 250 ms
+	time.Sleep(250 * time.Millisecond)
 	embedExists, tweetHasVideo, tweetHasMultipleImages := CheckIfEmbedExistsAndOrTweetHasVideoOrMultipleImages(message, tweet)
 	fmt.Printf("Embed exists: %t, tweetHasVideo: %t, tweetHasMultipleImages: %t\n", embedExists, tweetHasVideo, tweetHasMultipleImages)
 	embedRequired := (tweetHasVideo || tweetHasMultipleImages)
