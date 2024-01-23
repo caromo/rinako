@@ -57,43 +57,63 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			s.ChannelMessageSendReply(m.ChannelID, "Error parsing Twitter link...", m.Message.Reference())
 			return
 		}
-		HandleTweet(s, m.Message, linkForAPI, true)
+		HandleTweet(s, m.Message, linkForAPI, true, false)
 	}
 
 }
 
+func CheckIfEmbedExistsAndOrTweetHasVideoOrMultipleImages(message *discordgo.Message, tweet *Tweet) (embedExists bool, tweetHasVideo bool, tweetHasMultipleImages bool) {
+	embedExists = false
+	tweetHasVideo = false
+	tweetHasMultipleImages = false
+	if len(message.Embeds) > 0 {
+		fmt.Printf("Embed exists: %d\n", len(message.Embeds))
+		embedExists = true
+	}
+	images := 0
+	if len(tweet.MediaExtended) > 0 {
+		for _, media := range tweet.MediaExtended {
+			switch media.Type {
+			case "video":
+				tweetHasVideo = true
+			case "image":
+				images++
+			}
+		}
+	}
+	if images > 1 {
+		tweetHasMultipleImages = true
+	}
+	return
+}
+
 //HandleTweet(message, url) will be recursive and handle one level of a tweet at a time
-func HandleTweet(s *discordgo.Session, message *discordgo.Message, url string, reply bool) {
+func HandleTweet(s *discordgo.Session, message *discordgo.Message, url string, reply bool, isQRT bool) {
 	tweet, err := getTweet(url)
 	if err != nil {
 		log.Printf("Error getting tweet: %s", err)
 		return
 	}
 
-	embeds, videos, err := buildEmbed(tweet)
-	if err != nil {
-		log.Printf("Error building embed: %s", err)
-		return
-	}
+	embedExists, tweetHasVideo, tweetHasMultipleImages := CheckIfEmbedExistsAndOrTweetHasVideoOrMultipleImages(message, tweet)
+	fmt.Printf("Embed exists: %t, tweetHasVideo: %t, tweetHasMultipleImages: %t\n", embedExists, tweetHasVideo, tweetHasMultipleImages)
+	embedRequired := (tweetHasVideo || tweetHasMultipleImages)
 
-	if reply {
-		s.ChannelMessageSendComplex(message.ChannelID, &discordgo.MessageSend{
-			Embeds: embeds,
-			AllowedMentions: &discordgo.MessageAllowedMentions{
-				Parse: []discordgo.AllowedMentionType{},
-			},
-			Reference: message.Reference(),
-		})
-		// s.ChannelMessageSendEmbedReply(message.ChannelID, embed, message.Reference())
+	//Logic: If the tweet is a QRT (isQRT == true), then we want to send the embeds regardless of whether or not the original tweet has video/multiple images
+	// Otherwise, only send the embed if the original tweet:
+	// 1. Has an embed but video/multiple images
+	// 2. Does not have an embed
+	if isQRT {
+		buildAndSend(s, message, tweet)
 	} else {
-		s.ChannelMessageSendEmbeds(message.ChannelID, embeds)
-	}
-	for _, videoOpt := range videos {
-		if videoOpt.Needed {
-			s.ChannelMessageSend(message.ChannelID, videoOpt.URL)
+		if embedExists {
+			if embedRequired {
+				buildAndSend(s, message, tweet)
+			}
+		} else {
+			buildAndSend(s, message, tweet)
 		}
 	}
-
 	if tweet.QrtURL != nil {
 		fmt.Printf("Found qrt: %s\n", *tweet.QrtURL)
 		//convert to vxtwitter api link
@@ -105,7 +125,27 @@ func HandleTweet(s *discordgo.Session, message *discordgo.Message, url string, r
 		// Sleep for 1 second
 		time.Sleep(1 * time.Second)
 		// Recursively call HandleTweet, no reply
-		HandleTweet(s, message, newLink, false)
+		HandleTweet(s, message, newLink, false, true)
+	}
+}
+
+func buildAndSend(s *discordgo.Session, message *discordgo.Message, tweet *Tweet) {
+	embeds, videos, err := buildEmbed(tweet)
+	if err != nil {
+		log.Printf("Error building embed: %s", err)
+		return
+	}
+	s.ChannelMessageSendComplex(message.ChannelID, &discordgo.MessageSend{
+		Embeds: embeds,
+		AllowedMentions: &discordgo.MessageAllowedMentions{
+			Parse: []discordgo.AllowedMentionType{},
+		},
+		Reference: message.Reference(),
+	})
+	for _, videoOpt := range videos {
+		if videoOpt.Needed {
+			s.ChannelMessageSend(message.ChannelID, videoOpt.URL)
+		}
 	}
 }
 
