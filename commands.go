@@ -57,7 +57,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			s.ChannelMessageSendReply(m.ChannelID, "Error parsing Twitter link...", m.Message.Reference())
 			return
 		}
-		HandleTweet(s, m.Message, linkForAPI, true, false)
+		HandleTweet(s, m.ID, m.ChannelID, linkForAPI, true, false)
 	}
 
 }
@@ -88,14 +88,21 @@ func CheckIfEmbedExistsAndOrTweetHasVideoOrMultipleImages(message *discordgo.Mes
 }
 
 //HandleTweet(message, url) will be recursive and handle one level of a tweet at a time
-func HandleTweet(s *discordgo.Session, message *discordgo.Message, url string, reply bool, isQRT bool) {
+func HandleTweet(s *discordgo.Session, messageID string, channelID string, url string, reply bool, isQRT bool) {
+	time.Sleep(3 * time.Second)
+	message, err := s.ChannelMessage(channelID, messageID)
+	if err != nil {
+		log.Printf("Error getting message: %s", err)
+		return
+	}
+
 	tweet, err := getTweet(url)
 	if err != nil {
 		log.Printf("Error getting tweet: %s", err)
 		return
 	}
 	//sleep for 250 ms
-	time.Sleep(250 * time.Millisecond)
+	// time.Sleep(250 * time.Millisecond)
 	embedExists, tweetHasVideo, tweetHasMultipleImages := CheckIfEmbedExistsAndOrTweetHasVideoOrMultipleImages(message, tweet)
 	fmt.Printf("Embed exists: %t, tweetHasVideo: %t, tweetHasMultipleImages: %t\n", embedExists, tweetHasVideo, tweetHasMultipleImages)
 	embedRequired := (tweetHasVideo || tweetHasMultipleImages)
@@ -126,7 +133,7 @@ func HandleTweet(s *discordgo.Session, message *discordgo.Message, url string, r
 		// Sleep for 1 second
 		time.Sleep(1 * time.Second)
 		// Recursively call HandleTweet, no reply
-		HandleTweet(s, message, newLink, false, true)
+		HandleTweet(s, messageID, channelID, newLink, false, true)
 	}
 }
 
