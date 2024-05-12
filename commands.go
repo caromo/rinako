@@ -51,6 +51,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	// if something matches this pattern:
 	if !strings.HasPrefix(m.Content, "||") {
+		log.Printf("Raw message: $s", m.Content)
 		if strings.Contains(m.Content, "https://twitter.com") || strings.Contains(m.Content, "https://x.com") {
 			linkForAPI, err := convertToVXLink(m.Content)
 			if err != nil {
