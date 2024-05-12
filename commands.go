@@ -50,14 +50,16 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	// if something matches this pattern:
-	if strings.Contains(m.Content, "https://twitter.com") || strings.Contains(m.Content, "https://x.com") {
-		linkForAPI, err := convertToVXLink(m.Content)
-		if err != nil {
-			log.Printf("Error converting to vxtwitter link: %s", err)
-			s.ChannelMessageSendReply(m.ChannelID, "Error parsing Twitter link...", m.Message.Reference())
-			return
+	if !strings.HasPrefix(m.Content, "||") {
+		if strings.Contains(m.Content, "https://twitter.com") || strings.Contains(m.Content, "https://x.com") {
+			linkForAPI, err := convertToVXLink(m.Content)
+			if err != nil {
+				log.Printf("Error converting to vxtwitter link: %s", err)
+				s.ChannelMessageSendReply(m.ChannelID, "Error parsing Twitter link...", m.Message.Reference())
+				return
+			}
+			HandleTweet(s, m.ID, m.ChannelID, linkForAPI, true, false)
 		}
-		HandleTweet(s, m.ID, m.ChannelID, linkForAPI, true, false)
 	}
 
 }
@@ -87,7 +89,7 @@ func CheckIfEmbedExistsAndOrTweetHasVideoOrMultipleImages(message *discordgo.Mes
 	return
 }
 
-//HandleTweet(message, url) will be recursive and handle one level of a tweet at a time
+// HandleTweet(message, url) will be recursive and handle one level of a tweet at a time
 func HandleTweet(s *discordgo.Session, messageID string, channelID string, url string, reply bool, isQRT bool) {
 	time.Sleep(3 * time.Second)
 	message, err := s.ChannelMessage(channelID, messageID)
@@ -612,7 +614,7 @@ func constructRoleEmbeds(field []collections.RoleDesc) (embeds []*discordgo.Mess
 	return
 }
 
-//People tagged under roulette can tag others
+// People tagged under roulette can tag others
 func (m *messageEvent) tag(args []string) {
 
 	if len(args) == 0 {
@@ -638,7 +640,7 @@ func (m *messageEvent) tag(args []string) {
 	return
 }
 
-//...but they can't remove themselves
+// ...but they can't remove themselves
 func (m *messageEvent) untag(args []string) {
 	if len(args) == 0 {
 		m.sendMessagef("Use: %suntag @<name>", rinako.config.Discriminator)
@@ -812,18 +814,18 @@ type Embed struct {
 	*discordgo.MessageEmbed
 }
 
-//NewEmbed returns a new embed object
+// NewEmbed returns a new embed object
 func NewEmbed() *Embed {
 	return &Embed{&discordgo.MessageEmbed{}}
 }
 
-//SetTitle ...
+// SetTitle ...
 func (e *Embed) SetTitle(name string) *Embed {
 	e.Title = name
 	return e
 }
 
-//SetDescription [desc]
+// SetDescription [desc]
 func (e *Embed) SetDescription(description string) *Embed {
 	if len(description) > 2048 {
 		description = description[:2048]
@@ -832,7 +834,7 @@ func (e *Embed) SetDescription(description string) *Embed {
 	return e
 }
 
-//AddField [name] [value]
+// AddField [name] [value]
 func (e *Embed) AddField(name, value string) *Embed {
 	if len(value) > 1024 {
 		value = value[:1024]
@@ -851,7 +853,7 @@ func (e *Embed) AddField(name, value string) *Embed {
 
 }
 
-//SetFooter [Text] [iconURL]
+// SetFooter [Text] [iconURL]
 func (e *Embed) SetFooter(args ...string) *Embed {
 	iconURL := ""
 	text := ""
@@ -879,7 +881,7 @@ func (e *Embed) SetFooter(args ...string) *Embed {
 	return e
 }
 
-//SetImage ...
+// SetImage ...
 func (e *Embed) SetImage(args ...string) *Embed {
 	var URL string
 	var proxyURL string
@@ -923,7 +925,7 @@ func (e *Embed) SetImage(args ...string) *Embed {
 	return e
 }
 
-//SetVideo ...
+// SetVideo ...
 func (e *Embed) SetVideo(args ...string) *Embed {
 	var URL string
 
@@ -939,7 +941,7 @@ func (e *Embed) SetVideo(args ...string) *Embed {
 	return e
 }
 
-//SetThumbnail ...
+// SetThumbnail ...
 func (e *Embed) SetThumbnail(args ...string) *Embed {
 	var URL string
 	var proxyURL string
@@ -960,7 +962,7 @@ func (e *Embed) SetThumbnail(args ...string) *Embed {
 	return e
 }
 
-//SetAuthor ...
+// SetAuthor ...
 func (e *Embed) SetAuthor(args ...string) *Embed {
 	var (
 		name     string
@@ -995,13 +997,13 @@ func (e *Embed) SetAuthor(args ...string) *Embed {
 	return e
 }
 
-//SetURL ...
+// SetURL ...
 func (e *Embed) SetURL(URL string) *Embed {
 	e.URL = URL
 	return e
 }
 
-//SetColor ...
+// SetColor ...
 func (e *Embed) SetColor(clr int) *Embed {
 	e.Color = clr
 	return e
