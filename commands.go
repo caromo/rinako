@@ -59,7 +59,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 				s.ChannelMessageSendReply(m.ChannelID, "Error parsing Twitter link...", m.Message.Reference())
 				return
 			}
-			HandleTweet(s, m.ID, m.ChannelID, linkForAPI, true, false)
+			HandleTweet(s, m.ID, m.ChannelID, linkForAPI, true, false, 0)
 		}
 	}
 
@@ -91,7 +91,7 @@ func CheckIfEmbedExistsAndOrTweetHasVideoOrMultipleImages(message *discordgo.Mes
 }
 
 // HandleTweet(message, url) will be recursive and handle one level of a tweet at a time
-func HandleTweet(s *discordgo.Session, messageID string, channelID string, url string, reply bool, isQRT bool) {
+func HandleTweet(s *discordgo.Session, messageID string, channelID string, url string, reply bool, isQRT bool, level uint16) {
 	time.Sleep(3 * time.Second)
 	message, err := s.ChannelMessage(channelID, messageID)
 	if err != nil {
@@ -136,7 +136,11 @@ func HandleTweet(s *discordgo.Session, messageID string, channelID string, url s
 		// Sleep for 1 second
 		time.Sleep(1 * time.Second)
 		// Recursively call HandleTweet, no reply
-		HandleTweet(s, messageID, channelID, newLink, false, true)
+		if level < 3 {
+			HandleTweet(s, messageID, channelID, newLink, false, true, level+1)
+		} else {
+			s.ChannelMessageSend(channelID, "Stopping due to QT levels exceeding the limit")
+		}
 	}
 }
 
